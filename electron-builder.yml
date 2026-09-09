@@ -1,0 +1,21 @@
+appId: com.canvastube.app
+productName: CanvasTube
+directories:
+  output: dist
+files:
+  - out/**/*
+  - package.json
+extraMetadata:
+  main: out/main/index.js
+linux:
+  executableName: canvastube
+  target:
+    - target: dir
+      arch:
+        - x64
+    - target: rpm
+      arch:
+        - x64
+  category: Graphics
+  synopsis: Offline technical explanation workspace
+  description: Offline desktop infinite-canvas workspace optimized for technical explanations and video recording

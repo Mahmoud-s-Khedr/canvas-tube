@@ -1,0 +1,90 @@
+name: Build Fedora (Debug)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_rpm:
+        description: 'Also package as Fedora RPM (.rpm)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build-fedora-debug:
+    name: Build Fedora Debug Artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build CanvasTube in Official Fedora 41 Container
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e CI=true \
+            -e NODE_ENV=development \
+            -e DEBUG=electron-builder \
+            -e BUILD_RPM="${{ github.event.inputs.build_rpm || 'false' }}" \
+            fedora:41 bash -c "
+              set -euo pipefail
+
+              echo '=== 1. Updating Fedora Repositories & Installing Dependencies ==='
+              dnf update -y --setopt=install_weak_deps=False
+              dnf install -y --setopt=install_weak_deps=False nodejs npm git tar gzip rpm-build
+
+              echo '=== 2. Toolchain Information ==='
+              cat /etc/fedora-release
+              node --version
+              npm --version
+              rpmbuild --version
+
+              echo '=== 3. Clean Installing Node Dependencies ==='
+              npm ci
+
+              echo '=== 4. Verifying TypeScript Types ==='
+              npm run typecheck
+
+              echo '=== 5. Running Automated Unit Tests ==='
+              npm test
+
+              echo '=== 6. Running Linter Checks ==='
+              npm run lint
+
+              echo '=== 7. Compiling Application & Packaging Debug Linux Binary ==='
+              npm run build:linux:debug
+
+              if [ \"\$BUILD_RPM\" = \"true\" ]; then
+                echo '=== Optional: Packaging Fedora RPM ==='
+                npx electron-builder --linux rpm
+              fi
+
+              echo '=== 8. Archiving Debug Artifact ==='
+              cd dist
+              tar -czf canvastube-fedora-debug-x64.tar.gz linux-unpacked/
+              echo 'Archive canvastube-fedora-debug-x64.tar.gz generated successfully.'
+              ls -lh canvastube-fedora-debug-x64.tar.gz
+            "
+
+      - name: Upload Fedora Debug Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-fedora-debug-x64
+          path: dist/canvastube-fedora-debug-x64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Fedora RPM (if requested)
+        if: ${{ github.event.inputs.build_rpm == true || github.event.inputs.build_rpm == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-fedora-rpm
+          path: dist/*.rpm
+          if-no-files-found: warn
+          retention-days: 14
