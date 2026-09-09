@@ -15,7 +15,7 @@ on:
 
 jobs:
   build-fedora-debug:
-    name: Build Fedora Debug Artifact
+    name: Build Fedora Debug Artifact & AppImage
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -57,12 +57,13 @@ jobs:
               echo '=== 6. Running Linter Checks ==='
               npm run lint
 
-              echo '=== 7. Compiling Application & Packaging Debug Linux Binary ==='
+              echo '=== 7. Compiling Application & Packaging Debug Linux Binary & AppImage ==='
               npm run build:linux:debug
+              npx electron-builder --linux AppImage --publish never
 
               if [ \"\$BUILD_RPM\" = \"true\" ]; then
                 echo '=== Optional: Packaging Fedora RPM ==='
-                npx electron-builder --linux rpm
+                npx electron-builder --linux rpm --publish never
               fi
 
               echo '=== 8. Archiving Debug Artifact ==='
@@ -70,6 +71,8 @@ jobs:
               tar -czf canvastube-fedora-debug-x64.tar.gz linux-unpacked/
               echo 'Archive canvastube-fedora-debug-x64.tar.gz generated successfully.'
               ls -lh canvastube-fedora-debug-x64.tar.gz
+              echo 'AppImage generated successfully:'
+              ls -lh *.AppImage
             "
 
       - name: Upload Fedora Debug Build Artifact
@@ -77,6 +80,14 @@ jobs:
         with:
           name: canvastube-fedora-debug-x64
           path: dist/canvastube-fedora-debug-x64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Fedora AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-fedora-appimage
+          path: dist/*.AppImage
           if-no-files-found: error
           retention-days: 14
 

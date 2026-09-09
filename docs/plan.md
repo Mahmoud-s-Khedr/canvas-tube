@@ -159,7 +159,9 @@
   - [x] Implement GitHub Actions CI workflow ([`.github/workflows/build-fedora-debug.yml`](file:///home/mk/Projects/CV_projects/canvas-tube/.github/workflows/build-fedora-debug.yml)) running inside official `fedora:41` container to build and test the debug distribution.
   - [ ] Flatpak manifest with Wayland permissions and local file access.
   - [ ] Fedora RPM package release automation.
-  - [ ] AppImage standalone executable.
+  - [x] AppImage standalone executable.
+  - [x] Automated AppImage generation and upload in CI workflow (`canvastube-fedora-appimage` artifact).
+  - [x] CanvasTube brand desktop icons in `build/icons/`.
 - [ ] **Windows & macOS Support**
   - [ ] Windows 11 `.msi` / `.exe` installer with Windows Ink / Pointer API testing.
   - [ ] macOS `.dmg` with Apple Silicon (arm64) and Intel (x64) universal builds.

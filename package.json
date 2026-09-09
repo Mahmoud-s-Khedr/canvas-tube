@@ -9,6 +9,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "build:linux:debug": "electron-vite build && electron-builder --linux --dir",
+    "build:linux:appimage": "electron-vite build && electron-builder --linux AppImage",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",

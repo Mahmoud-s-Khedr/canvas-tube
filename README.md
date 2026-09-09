@@ -1,39 +1,36 @@
 # CanvasTube
 
-> **An offline desktop infinite-canvas workspace optimized for explaining software engineering, system design, cloud computing, and technical architectures while recording YouTube videos.**
+Offline desktop infinite-canvas workspace optimized for technical explanations and video recording on Fedora Linux with drawing tablets (XP-Pen Deco 01 V3).
 
-CanvasTube is a local-first desktop application designed for technical creators, educators, and software architects. Built primarily on **Fedora Linux / Wayland** with first-class support for drawing tablets (such as the XP-Pen Deco 01 V3), CanvasTube provides a distraction-free infinite workspace for visual technical communication.
-
----
-
-## 🌟 Vision & Key Capabilities
-
-- **Zero Cloud / Local-First**: No accounts, no backend servers, no logins, no telemetry. Everything lives in transparent file-system project directories on your local drive.
-- **Offline Self-Hosted**: 100% functional without an internet connection. Fonts and assets are bundled locally with zero CDN dependencies.
-- **Canvas Abstraction Layer**: Built on top of an application-owned `CanvasAdapter` interface, currently powered by `@excalidraw/excalidraw` (MIT), allowing future backend swappability without rewriting application features.
-- **Clean Recording Mode (`F10` / `Ctrl+Shift+R`)**: Strips away toolbars, sidebars, chrome, and UI clutter, leaving a pristine canvas view optimized for OBS Studio, pipewire screen recording, and 4K screen capture.
-- **Hardware Stylus & Pointer Inspector**: Live diagnostic panel tracking real-time pointer events (`pointerType`, `pressure`, `tiltX`, `tiltY`, coordinates, buttons) ensuring tablet pressure sensitivity behaves correctly under Linux Wayland.
-- **Architecture Icon Library**: Ready-to-use vector stencils for cloud systems, servers, databases, queues, and Kubernetes pods with live search and drag/click insertion.
-- **Human-Readable Project Bundles**: Projects are saved as directories (`project.json`, `scene.json`, `assets/`, `documents/`, `cache/`) with versioned manifests and SHA-256 deduplicated assets.
+![CanvasTube Hero](docs/hero-concept.png)
 
 ---
 
-## 🚀 Getting Started
+## ✨ Features
+
+- 🖊️ **Hardware Digitizer Precision**: Native Linux pointer events capturing stylus pressure (8192 levels), tilt, twist, and sub-pixel stylus coordinates.
+- 📐 **Decoupled Infinite Canvas**: Extensible canvas abstraction layer backed by Excalidraw, supporting hand-drawn strokes, geometric shapes, and technical diagrams.
+- 🎬 **Clean Recording Mode (`F10`)**: Instantly collapse all application chrome into an ultra-clean canvas with a floating pill widget for OBS Studio window capture.
+- 📦 **Offline Content-Addressed Bundles**: Self-contained project directory format with manifest v1 metadata, scene graphs, and SHA-256 deduplicated image assets.
+- 🏛️ **Architecture Stencils**: Built-in vector catalog featuring cloud, database, server, queue, and Kubernetes primitives.
+- 🔍 **Live Hardware Stylus Inspector**: Real-time diagnostic panel displaying pen pressure bars, tilt angles, coordinates, and tablet hardware detection.
+- 🔒 **Deterministic & Fully Offline**: Zero cloud dependencies, self-hosted web fonts, context-isolated Electron sandbox, and zero telemetry.
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Node.js**: v18.0.0 or higher (v20+ recommended)
-- **Linux / Wayland**: Fedora 40/41+ (or Ubuntu 22.04+, Arch Linux)
-- **Drawing Tablet**: XP-Pen Deco 01 V3, Wacom, Huion, or any standard libinput-compatible digitizer
+- **Node.js**: v20 or later
+- **npm**: v10 or later
+- **Operating System**: Linux (Fedora 40/41/Rawhide recommended with GNOME Wayland)
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/canvas-tube.git
+git clone https://github.com/Mahmoud-s-Khedr/canvas-tube.git
 cd canvas-tube
-
-# Install dependencies
 npm install
 ```
 
@@ -52,8 +49,14 @@ npm run test
 # Run ESLint validation
 npm run lint
 
-# Compile and package production bundles
+# Compile production bundles
 npm run build
+
+# Package unpacked Linux debug binary
+npm run build:linux:debug
+
+# Package portable standalone AppImage for Linux
+npm run build:linux:appimage
 ```
 
 ---
@@ -73,7 +76,7 @@ npm run build
 
 ---
 
-## 📁 Project File Structure
+## 📁 Project Directory Bundle Structure
 
 CanvasTube projects are saved as directory bundles:
 
@@ -102,6 +105,7 @@ CanvasTube follows Electron security best practices:
 
 - [System Architecture](docs/ARCHITECTURE.md)
 - [Product Roadmap](docs/ROADMAP.md)
+- [Implementation & Sprint Plan](docs/plan.md)
 - [Reference Implementations & Licenses](docs/REFERENCES.md)
 - [Linux Wayland & XP-Pen Tablet Testing Guide](docs/INPUT-TESTING.md)
 
