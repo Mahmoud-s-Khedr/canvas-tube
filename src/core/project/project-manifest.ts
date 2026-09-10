@@ -5,6 +5,7 @@ export interface CameraBookmark {
   y: number
   zoom: number
   createdAt: string
+  description?: string
 }
 
 export interface DocumentEntry {
@@ -106,6 +107,15 @@ export function validateProjectManifest(data: unknown): {
 
   if (!candidate.assets || typeof candidate.assets !== 'object') {
     return { valid: false, error: 'Manifest assets must be an object' }
+  }
+
+  if (!candidate.presentation || typeof candidate.presentation !== 'object') {
+    candidate.presentation = { cameraBookmarks: [] }
+  } else {
+    const pres = candidate.presentation as Record<string, unknown>
+    if (!Array.isArray(pres.cameraBookmarks)) {
+      pres.cameraBookmarks = []
+    }
   }
 
   return {

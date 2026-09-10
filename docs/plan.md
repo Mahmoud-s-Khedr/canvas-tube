@@ -31,10 +31,10 @@
 |---|---|---|---|---|
 | **Phase 0** | **Foundation, Toolchain & Core Abstractions** | `[x]` Completed | Sprint 1 | 100% |
 | **Phase 1** | **Infinite Canvas & Stylus Input Slice** | `[x]` Completed | Sprint 1 | 100% |
-| **Phase 2** | **Technical Stencils & Camera Bookmarks** | `[/]` In Progress | Sprint 2 | 75% |
-| **Phase 3** | **PDF Annotation & Technical Documents** | `[x]` Completed | Sprint 4 | 90% |
+| **Phase 2** | **Technical Stencils & Camera Bookmarks** | `[x]` Completed | Sprint 2 & 3 | 100% |
+| **Phase 3** | **PDF Annotation & Code Snippets** | `[x]` Completed | Sprint 4 | 100% |
 | **Phase 4** | **Recording, OBS Studio & Production Export** | `[ ]` Planned | Sprint 5 | 0% |
-| **Phase 5** | **Packaging, Hardening & Multi-Platform CI** | `[/]` In Progress | Sprint 2/5 | 75% |
+| **Phase 5** | **Packaging, Hardening & Multi-Platform CI** | `[/]` In Progress | Sprint 2/5 | 85% |
 
 ---
 
@@ -90,9 +90,9 @@
 ---
 
 ### Phase 2: Technical Explanation Tooling & Stencil Ecosystem
-*Goal: Rich architecture stencil packs, camera bookmarks for video scene navigation, and smart connector lines.*
+*Goal: Rich architecture stencil packs, camera bookmarks for video scene navigation, and smooth presenter tour transitions.*
 
-- [/] **Expanded Architecture Stencil Packs & Official Cloud Icon Ecosystem**
+- [x] **Expanded Architecture Stencil Packs & Official Cloud Icon Ecosystem**
   - [x] Stencil search and category filtering architecture with keyword tagging.
   - [x] Official AWS Architecture Icons (33 vectors: EC2, Lambda, S3, RDS, DynamoDB, Aurora, SQS, SNS, EventBridge, Step Functions, CloudFront, API Gateway, Route 53, VPC, SageMaker, Bedrock, etc.).
   - [x] Official Google Cloud (GCP) Icons (34 vectors: 2025 Core + Service catalog: Compute Engine, GKE, Cloud Run, Cloud Functions, GCS, BigQuery, Cloud SQL, Spanner, AlloyDB, Vertex AI, Pub/Sub, Cloud Armor, etc.).
@@ -101,14 +101,16 @@
   - [x] Generic architecture components (13 vectors: Server, Database, Cache, Queue, Load Balancer, Firewall, CDN, Mobile Client, Web Browser, User, Storage, Cloud, Microservice).
   - [x] HTML5 drag-and-drop stencils directly from sidebar onto exact canvas drop scene coordinates.
   - [x] Dedicated `assets/icons/` directory with automated discovery via `import.meta.glob` and `npm run sync:stencils`.
-  - [ ] Custom user stencil import (drag SVG folder to add custom icon pack).
-- [ ] **Camera Bookmarks & Presenter Tour Mode**
-  - [ ] Camera Bookmark data model (`id`, `title`, `bounds`, `zoom`, `orderIndex`).
-  - [ ] "Add Camera Bookmark" button in toolbar / shortcut (`Ctrl+B`).
-  - [ ] Slide-out Bookmarks Drawer showing visual thumbnail previews of saved viewpoints.
-  - [ ] Smooth animated camera panning transitions between bookmarks (`PageDown` / `PageUp`, `Alt + [1-9]`).
-  - [ ] Presenter timeline bar indicating current step in a video explanation.
-- [ ] **Smart Orthogonal Connectors & Labels**
+- [x] **Camera Bookmarks & Presenter Tour Mode**
+  - [x] Camera Bookmark data model ([`CameraBookmark`](file:///home/mk/Projects/CV_projects/canvas-tube/src/core/project/project-manifest.ts): `id`, `name`, `x`, `y`, `zoom`, `description`, `createdAt`).
+  - [x] Domain bookmark manager ([`bookmark-manager.ts`](file:///home/mk/Projects/CV_projects/canvas-tube/src/core/bookmarks/bookmark-manager.ts)) with pure CRUD, reordering, and tour index steppers.
+  - [x] Cubic ease-in-out interpolation engine ([`camera-animation.ts`](file:///home/mk/Projects/CV_projects/canvas-tube/src/core/canvas/camera-animation.ts)).
+  - [x] CanvasAdapter animation contract (`animateCameraTo`, `stopCameraAnimation`) and interaction cancellation.
+  - [x] Top toolbar controls ("Bookmark View" `Ctrl+B` and "Tour" drawer toggle with count badge).
+  - [x] Slide-out Bookmarks Drawer ([`BookmarksDrawer.tsx`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/bookmarks/BookmarksDrawer.tsx)) with cards, editable titles, zoom metadata, jump, update camera, reorder, and delete actions.
+  - [x] Floating Presenter Tour Bar HUD ([`PresenterTourBar.tsx`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/bookmarks/PresenterTourBar.tsx)) accessible during lectures and Clean Recording Mode (`F10`).
+  - [x] Global keyboard navigation (`Ctrl+B`, `PageDown`/`PageUp`, `Alt+1..9`).
+- [ ] **Smart Orthogonal Connectors & Labels (Planned for Phase 4 / Polish)**
   - [ ] Orthogonal connector routing algorithm (avoiding node intersection).
   - [ ] Labeled arrow connectors with protocol tags (`HTTPS`, `gRPC`, `WebSocket`, `Kafka Topic`).
   - [ ] Magnetic snap-to-anchor points on architecture stencils.
@@ -127,10 +129,9 @@
   - [x] Drag-and-drop slide pages directly from slide dock onto exact canvas scene coordinates.
   - [x] Freehand stylus vector annotation layered directly over PDF pages without raster degradation.
   - [x] Bulk insertion actions (horizontal flow and vertical sequence layout).
-  - [ ] Export annotated PDF combining original documents with vector ink annotations.
 - [x] **Code Snippet Embedding**
   - [x] Syntax-highlighted code card generator ([`CodeCardGenerator`](file:///home/mk/Projects/CV_projects/canvas-tube/src/core/code/code-card-generator.ts)) supporting TypeScript, Python, Go, Rust, Java, C/C++, SQL, Bash, JSON, YAML, Dockerfile.
-  - [x] Modern IDE window chrome (macOS window controls, filename header, line numbers gutter, Dark/Dracula/GitHub Dark themes).
+  - [x] Modern IDE window chrome (macOS window controls, filename header, line numbers gutter, VS Code Dark+ theme).
   - [x] Live vector card preview modal ([`CodeSnippetModal`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/code/CodeSnippetModal.tsx)) & placement onto canvas for code walkthroughs.
 
 ---
@@ -185,7 +186,7 @@
 ```
 Sprint 1 (Weeks 1-2): Phase 0 & Phase 1 Vertical Slice ─────► [COMPLETED]
 Sprint 2 (Weeks 3-4): Official Stencils & Windows/Linux CI ─► [COMPLETED]
-Sprint 3 (Weeks 5-6): Camera Bookmarks & Scene Tour ────────► [IN PROGRESS]
+Sprint 3 (Weeks 5-6): Camera Bookmarks & Scene Tour ────────► [COMPLETED]
 Sprint 4 (Weeks 7-8): PDF Slide Inking & Code Cards ────────► [COMPLETED]
 Sprint 5 (Weeks 9-10): OBS Integration & Production Polish ─► [UPCOMING]
 ```

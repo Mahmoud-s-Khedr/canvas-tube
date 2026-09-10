@@ -9,7 +9,9 @@ import {
   Activity,
   Video,
   Minimize2,
-  Code
+  Code,
+  Bookmark,
+  BookmarkPlus
 } from 'lucide-react'
 
 interface TopToolbarProps {
@@ -19,9 +21,13 @@ interface TopToolbarProps {
   isInspectorOpen: boolean
   hasDocument: boolean
   isDocumentDockOpen: boolean
+  bookmarksCount: number
+  isBookmarksOpen: boolean
   onToggleRecordingMode: () => void
   onToggleInspector: () => void
   onToggleDocumentDock: () => void
+  onToggleBookmarks: () => void
+  onAddBookmark: () => void
   onNewProject: () => void
   onOpenProject: () => void
   onSaveProject: () => void
@@ -39,9 +45,13 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   isInspectorOpen,
   hasDocument,
   isDocumentDockOpen,
+  bookmarksCount,
+  isBookmarksOpen,
   onToggleRecordingMode,
   onToggleInspector,
   onToggleDocumentDock,
+  onToggleBookmarks,
+  onAddBookmark,
   onNewProject,
   onOpenProject,
   onSaveProject,
@@ -248,6 +258,48 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
             <span>Slide Dock</span>
           </button>
         )}
+
+        <div style={{ height: 18, width: 1, backgroundColor: '#3f3f46', margin: '0 4px' }} />
+
+        {/* Bookmark viewpoint button */}
+        <button
+          onClick={onAddBookmark}
+          style={buttonStyle}
+          title="Save Current Camera Viewpoint as Bookmark (Ctrl+B)"
+        >
+          <BookmarkPlus size={15} color="#60a5fa" />
+          <span>Bookmark View</span>
+        </button>
+
+        {/* Bookmarks Drawer Toggle */}
+        <button
+          onClick={onToggleBookmarks}
+          style={{
+            ...buttonStyle,
+            backgroundColor: isBookmarksOpen ? '#1e3a8a' : '#27272a',
+            border: `1px solid ${isBookmarksOpen ? '#3b82f6' : '#3f3f46'}`,
+            color: isBookmarksOpen ? '#93c5fd' : '#e4e4e7'
+          }}
+          title="Toggle Camera Bookmarks & Scene Tour Drawer"
+        >
+          <Bookmark size={15} color="#60a5fa" />
+          <span>Tour</span>
+          {bookmarksCount > 0 && (
+            <span
+              style={{
+                backgroundColor: isBookmarksOpen ? '#3b82f6' : '#3f3f46',
+                color: '#ffffff',
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '1px 5px',
+                borderRadius: 10,
+                marginLeft: 2
+              }}
+            >
+              {bookmarksCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Right: Recording Mode & Dev Inspector Controls */}

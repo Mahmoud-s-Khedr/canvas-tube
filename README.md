@@ -11,6 +11,9 @@ Offline desktop infinite-canvas workspace optimized for technical explanations a
 - 🖊️ **Hardware Digitizer Precision**: Native pointer events capturing stylus pressure (8192 levels), tilt, twist, and sub-pixel stylus coordinates across Linux Wayland and Windows (DirectManipulation / WM_POINTER).
 - 📐 **Decoupled Infinite Canvas**: Extensible canvas abstraction layer backed by Excalidraw, supporting hand-drawn strokes, geometric shapes, and technical diagrams.
 - 🎬 **Clean Recording Mode (`F10`)**: Instantly collapse all application chrome into an ultra-clean canvas with a floating pill widget for OBS Studio window capture.
+- 🎥 **Smooth Camera Bookmarks & Scene Tour**: Save key viewpoints (`Ctrl+B`) with auto-incremented titles. Effortlessly glide the camera between architecture components using smooth cubic ease-in-out transitions, a slide-out drawer, floating presenter HUD, or presenter hotkeys (`PageDown`/`PageUp`, `Alt+1..9`).
+- 📄 **Offline PDF Slide & Document Inking**: Import technical slides or research papers into the project. Browse pages in the slide-strip dock, drag or pin them onto the canvas as locked reference cards, and ink handwritten notes on top without raster degradation.
+- 💻 **Syntax-Highlighted Code Cards**: Generate IDE-styled vector code cards with macOS window dots, file tabs, line number gutters, and Prism multi-language syntax highlighting (TypeScript, Python, Go, Rust, SQL, Bash, YAML, etc.).
 - 📦 **Offline Content-Addressed Bundles**: Self-contained project directory format with manifest v1 metadata, scene graphs, and SHA-256 deduplicated image assets.
 - 🏛️ **130+ Official Architecture Stencils**: Built-in official vector catalog featuring AWS, Google Cloud (GCP), Microsoft Azure, Kubernetes (`kubernetes/community`), and generic system design components. Drag and drop directly onto the canvas.
 - 🔍 **Live Hardware Stylus Inspector**: Real-time diagnostic panel displaying pen pressure bars, tilt angles, coordinates, and tablet hardware detection.
@@ -115,13 +118,17 @@ All stencils support **live keyword search** (e.g. searching "kafka" finds Event
 | Shortcut | Action |
 |---|---|
 | **`F10`** or **`Ctrl + Shift + R`** | **Toggle Clean Recording Mode** (Hides chrome for OBS capture) |
-| **`Esc`** | Exit Recording Mode |
+| **`Ctrl + B`** | **Bookmark Camera Viewpoint** (Saves current camera `{ x, y, zoom }`) |
+| **`PageDown`** or **`Alt + ArrowRight`** | **Next Tour Bookmark** (Smoothly animates camera forward) |
+| **`PageUp`** or **`Alt + ArrowLeft`** | **Previous Tour Bookmark** (Smoothly animates camera backward) |
+| **`Alt + [1-9]`** | **Direct Jump to Bookmark [1-9]** |
 | **`Ctrl + S`** | Save Project |
 | **`Ctrl + Shift + S`** | Save Project As... |
 | **`Ctrl + O`** | Open Project Folder |
 | **`Ctrl + N`** | New Project |
 | **`Ctrl + Shift + I`** | Toggle Stylus & Pointer Inspector |
 | **`Ctrl + Z`** / **`Ctrl + Y`** | Undo / Redo Canvas Strokes |
+| **`Esc`** | Exit Recording Mode or Close Drawers/Modals |
 
 ---
 
@@ -131,7 +138,7 @@ CanvasTube projects are saved as directory bundles:
 
 ```text
 MyArchitectureExplanation/
-├── project.json      # Versioned manifest (title, created, assets, camera bookmarks)
+├── project.json      # Versioned manifest (title, created, assets, documents, cameraBookmarks)
 ├── scene.json        # Canvas element hierarchy and viewport coordinates
 ├── assets/           # Content-addressed media files (named by sha256 hash)
 ├── documents/        # PDF documents or slides for annotation
@@ -154,7 +161,7 @@ CanvasTube follows Electron security best practices:
 
 - [System Architecture](docs/ARCHITECTURE.md)
 - [Product Roadmap](docs/ROADMAP.md)
-- [Implementation & Sprint Plan](docs/plan.md)
+- [Master Implementation Plan](docs/plan.md)
 - [Reference Implementations & Licenses](docs/REFERENCES.md)
 - [Tablet & Stylus Testing Guide (Linux Wayland & Windows)](docs/INPUT-TESTING.md)
 - [Architecture Stencils Guide](assets/icons/README.md)

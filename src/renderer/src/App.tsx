@@ -6,6 +6,15 @@ import {
   createDefaultManifest
 } from '@core/project/project-manifest'
 import { CanvasPointerSnapshot } from '@core/canvas/canvas-adapter'
+import {
+  createBookmark,
+  updateBookmarkCamera,
+  renameBookmark,
+  deleteBookmark,
+  reorderBookmarks,
+  getNextBookmarkIndex,
+  getPreviousBookmarkIndex
+} from '@core/bookmarks/bookmark-manager'
 import { SystemInfo } from '@core/desktop/desktop-api'
 import { ExcalidrawCanvasAdapter } from './components/canvas/ExcalidrawCanvasAdapter'
 import { CanvasView } from './components/canvas/CanvasView'
@@ -14,6 +23,8 @@ import { IconSidebar } from './components/sidebar/IconSidebar'
 import { InputInspector } from './components/inspector/InputInspector'
 import { DocumentSlideDock } from './components/documents/DocumentSlideDock'
 import { CodeSnippetModal } from './components/code/CodeSnippetModal'
+import { BookmarksDrawer } from './components/bookmarks/BookmarksDrawer'
+import { PresenterTourBar } from './components/bookmarks/PresenterTourBar'
 import { PdfService } from './services/pdf-service'
 
 export const App: React.FC = () => {
@@ -27,6 +38,10 @@ export const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [pointerSnapshot, setPointerSnapshot] = useState<CanvasPointerSnapshot | null>(null)
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null)
+
+  // Bookmarks & Scene Tour state
+  const [isBookmarksDrawerOpen, setIsBookmarksDrawerOpen] = useState(false)
+  const [activeBookmarkIndex, setActiveBookmarkIndex] = useState<number | null>(null)
 
   // Document (PDF) state
   const [activeDocument, setActiveDocument] = useState<DocumentEntry | null>(null)
@@ -64,6 +79,8 @@ export const App: React.FC = () => {
     setActiveDocument(null)
     setActivePdfDoc(null)
     setIsDocumentDockOpen(false)
+    setIsBookmarksDrawerOpen(false)
+    setActiveBookmarkIndex(null)
     adapter.deserialize({ elements: [], appState: {} })
   }, [adapter])
 
@@ -74,6 +91,7 @@ export const App: React.FC = () => {
       setProjectDir(result.projectDir)
       setManifest(result.bundle.manifest)
       adapter.deserialize(result.bundle.sceneData)
+      setActiveBookmarkIndex(null)
 
       // Restore PDF document if present in opened project
       if (result.bundle.manifest.documents.length > 0) {
@@ -136,6 +154,111 @@ export const App: React.FC = () => {
       setProjectDir(saveAsResult.path)
     }
   }, [adapter, manifest])
+
+  // Bookmark handlers
+  const handleAddBookmark = useCallback(
+    (name?: string) => {
+      const camera = adapter.getCamera()
+      const count = manifest.presentation.cameraBookmarks.length
+      const newBookmark = createBookmark(camera, name, undefined, count)
+
+      setManifest((prev) => ({
+        ...prev,
+        presentation: {
+          ...prev.presentation,
+          cameraBookmarks: [...prev.presentation.cameraBookmarks, newBookmark]
+        }
+      }))
+      setActiveBookmarkIndex(count)
+    },
+    [adapter, manifest.presentation.cameraBookmarks.length]
+  )
+
+  const handleJumpToBookmark = useCallback(
+    (index: number) => {
+      const bookmarks = manifest.presentation.cameraBookmarks
+      if (index < 0 || index >= bookmarks.length) return
+      const bm = bookmarks[index]
+      setActiveBookmarkIndex(index)
+      adapter.animateCameraTo({ x: bm.x, y: bm.y, zoom: bm.zoom }, 600)
+    },
+    [adapter, manifest.presentation.cameraBookmarks]
+  )
+
+  const handleNextBookmark = useCallback(() => {
+    const bookmarks = manifest.presentation.cameraBookmarks
+    if (bookmarks.length === 0) return
+    const nextIndex = getNextBookmarkIndex(activeBookmarkIndex, bookmarks.length)
+    if (nextIndex >= 0) {
+      handleJumpToBookmark(nextIndex)
+    }
+  }, [activeBookmarkIndex, manifest.presentation.cameraBookmarks, handleJumpToBookmark])
+
+  const handlePreviousBookmark = useCallback(() => {
+    const bookmarks = manifest.presentation.cameraBookmarks
+    if (bookmarks.length === 0) return
+    const prevIndex = getPreviousBookmarkIndex(activeBookmarkIndex, bookmarks.length)
+    if (prevIndex >= 0) {
+      handleJumpToBookmark(prevIndex)
+    }
+  }, [activeBookmarkIndex, manifest.presentation.cameraBookmarks, handleJumpToBookmark])
+
+  const handleUpdateBookmarkCamera = useCallback(
+    (id: string) => {
+      const camera = adapter.getCamera()
+      setManifest((prev) => ({
+        ...prev,
+        presentation: {
+          ...prev.presentation,
+          cameraBookmarks: updateBookmarkCamera(prev.presentation.cameraBookmarks, id, camera)
+        }
+      }))
+    },
+    [adapter]
+  )
+
+  const handleRenameBookmark = useCallback((id: string, name: string) => {
+    setManifest((prev) => ({
+      ...prev,
+      presentation: {
+        ...prev.presentation,
+        cameraBookmarks: renameBookmark(prev.presentation.cameraBookmarks, id, name)
+      }
+    }))
+  }, [])
+
+  const handleDeleteBookmark = useCallback(
+    (id: string) => {
+      setManifest((prev) => ({
+        ...prev,
+        presentation: {
+          ...prev.presentation,
+          cameraBookmarks: deleteBookmark(prev.presentation.cameraBookmarks, id)
+        }
+      }))
+      setActiveBookmarkIndex((prev) => {
+        if (prev === null) return null
+        const nextTotal = manifest.presentation.cameraBookmarks.length - 1
+        if (nextTotal <= 0) return null
+        return Math.min(prev, nextTotal - 1)
+      })
+    },
+    [manifest.presentation.cameraBookmarks.length]
+  )
+
+  const handleReorderBookmarks = useCallback((fromIndex: number, toIndex: number) => {
+    setManifest((prev) => ({
+      ...prev,
+      presentation: {
+        ...prev.presentation,
+        cameraBookmarks: reorderBookmarks(prev.presentation.cameraBookmarks, fromIndex, toIndex)
+      }
+    }))
+    setActiveBookmarkIndex((prevIndex) => {
+      if (prevIndex === fromIndex) return toIndex
+      return prevIndex
+    })
+  }, [])
 
   const handleImportImage = useCallback(async () => {
     if (!window.desktopApi?.importAsset) return
@@ -257,6 +380,13 @@ export const App: React.FC = () => {
   // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const isInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+
       // Ctrl+S: Save
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
@@ -265,34 +395,84 @@ export const App: React.FC = () => {
         } else {
           handleSaveProject()
         }
+        return
       }
+
       // Ctrl+O: Open
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
         e.preventDefault()
         handleOpenProject()
+        return
       }
+
       // Ctrl+N: New
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault()
         handleNewProject()
+        return
       }
+
+      // Ctrl+B / Cmd+B: Save current viewpoint as bookmark
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b' && !e.shiftKey) {
+        e.preventDefault()
+        handleAddBookmark()
+        return
+      }
+
       // Ctrl+Shift+R or F10: Toggle Recording Mode
-      if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') || e.key === 'F10') {
+      if (
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') ||
+        e.key === 'F10'
+      ) {
         e.preventDefault()
         setIsRecordingMode((prev) => !prev)
+        return
       }
-      // Escape: Exit recording mode or close modal if active
+
+      // Escape: Exit recording mode or close active drawers/modals
       if (e.key === 'Escape') {
         if (isCodeModalOpen) {
           setIsCodeModalOpen(false)
+        } else if (isBookmarksDrawerOpen) {
+          setIsBookmarksDrawerOpen(false)
         } else if (isRecordingMode) {
           setIsRecordingMode(false)
         }
+        return
       }
+
       // Ctrl+Shift+I: Toggle Stylus Inspector
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'i') {
         e.preventDefault()
         setIsInspectorOpen((prev) => !prev)
+        return
+      }
+
+      // Hotkeys below should not be intercepted if typing in input/textarea
+      if (isInput) return
+
+      // PageDown or Alt+ArrowRight: Next bookmark in tour
+      if (e.key === 'PageDown' || (e.altKey && e.key === 'ArrowRight')) {
+        e.preventDefault()
+        handleNextBookmark()
+        return
+      }
+
+      // PageUp or Alt+ArrowLeft: Previous bookmark in tour
+      if (e.key === 'PageUp' || (e.altKey && e.key === 'ArrowLeft')) {
+        e.preventDefault()
+        handlePreviousBookmark()
+        return
+      }
+
+      // Alt+1 through Alt+9: Instant jump to bookmark index 1 through 9
+      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        const num = parseInt(e.key, 10)
+        if (!isNaN(num) && num >= 1 && num <= 9) {
+          e.preventDefault()
+          handleJumpToBookmark(num - 1)
+          return
+        }
       }
     }
 
@@ -303,8 +483,13 @@ export const App: React.FC = () => {
     handleSaveProjectAs,
     handleOpenProject,
     handleNewProject,
+    handleAddBookmark,
+    handleJumpToBookmark,
+    handleNextBookmark,
+    handlePreviousBookmark,
     isRecordingMode,
-    isCodeModalOpen
+    isCodeModalOpen,
+    isBookmarksDrawerOpen
   ])
 
   return (
@@ -325,9 +510,13 @@ export const App: React.FC = () => {
         isInspectorOpen={isInspectorOpen}
         hasDocument={Boolean(activeDocument)}
         isDocumentDockOpen={isDocumentDockOpen}
+        bookmarksCount={manifest.presentation.cameraBookmarks.length}
+        isBookmarksOpen={isBookmarksDrawerOpen}
         onToggleRecordingMode={() => setIsRecordingMode((prev) => !prev)}
         onToggleInspector={() => setIsInspectorOpen((prev) => !prev)}
         onToggleDocumentDock={() => setIsDocumentDockOpen((prev) => !prev)}
+        onToggleBookmarks={() => setIsBookmarksDrawerOpen((prev) => !prev)}
+        onAddBookmark={() => handleAddBookmark()}
         onNewProject={handleNewProject}
         onOpenProject={handleOpenProject}
         onSaveProject={handleSaveProject}
@@ -365,6 +554,33 @@ export const App: React.FC = () => {
           onClose={() => setIsDocumentDockOpen(false)}
         />
       )}
+
+      {/* Camera Bookmarks & Scene Tour Drawer */}
+      <BookmarksDrawer
+        isOpen={isBookmarksDrawerOpen && !isRecordingMode}
+        bookmarks={manifest.presentation.cameraBookmarks}
+        activeBookmarkIndex={activeBookmarkIndex}
+        onClose={() => setIsBookmarksDrawerOpen(false)}
+        onAddBookmark={() => handleAddBookmark()}
+        onJumpToBookmark={handleJumpToBookmark}
+        onNextBookmark={handleNextBookmark}
+        onPreviousBookmark={handlePreviousBookmark}
+        onUpdateBookmarkCamera={handleUpdateBookmarkCamera}
+        onRenameBookmark={handleRenameBookmark}
+        onDeleteBookmark={handleDeleteBookmark}
+        onReorderBookmarks={handleReorderBookmarks}
+      />
+
+      {/* Presenter Tour Bar (floating HUD at bottom) */}
+      <PresenterTourBar
+        bookmarks={manifest.presentation.cameraBookmarks}
+        activeBookmarkIndex={activeBookmarkIndex}
+        isRecordingMode={isRecordingMode}
+        onJumpToBookmark={handleJumpToBookmark}
+        onNextBookmark={handleNextBookmark}
+        onPreviousBookmark={handlePreviousBookmark}
+        onToggleDrawer={() => setIsBookmarksDrawerOpen((prev) => !prev)}
+      />
 
       {/* Syntax-Highlighted Code Snippet Modal */}
       <CodeSnippetModal

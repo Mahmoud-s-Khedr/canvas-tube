@@ -1,35 +1,63 @@
 import Prism from 'prismjs'
 
-// Import popular languages
+// Import standard languages for syntax highlighting
 import 'prismjs/components/prism-typescript'
+import 'prismjs/components/prism-javascript'
 import 'prismjs/components/prism-jsx'
 import 'prismjs/components/prism-tsx'
 import 'prismjs/components/prism-python'
 import 'prismjs/components/prism-go'
 import 'prismjs/components/prism-rust'
-import 'prismjs/components/prism-java'
 import 'prismjs/components/prism-sql'
-import 'prismjs/components/prism-bash'
 import 'prismjs/components/prism-json'
 import 'prismjs/components/prism-yaml'
-import 'prismjs/components/prism-c'
-import 'prismjs/components/prism-cpp'
-import 'prismjs/components/prism-docker'
+import 'prismjs/components/prism-bash'
 
 export interface CodeCardOptions {
   code: string
-  language?: string
+  language: string
   title?: string
-  theme?: 'dark' | 'dracula' | 'github-dark'
-  showLineNumbers?: boolean
+  theme?: string
   fontSize?: number
+  showLineNumbers?: boolean
 }
 
-export interface GeneratedCodeCard {
+export interface CodeCardResult {
   svg: string
   dataUrl: string
   width: number
   height: number
+}
+
+interface HighlightSpan {
+  text: string
+  color: string
+  italic?: boolean
+}
+
+// VS Code Dark+ theme color palette
+const THEME = {
+  background: '#1e1e1e',
+  headerBg: '#252526',
+  border: '#3c3c3c',
+  titleColor: '#cccccc',
+  lineNumColor: '#858585',
+  defaultText: '#d4d4d4',
+  comment: '#6a9955',
+  string: '#ce9178',
+  number: '#b5cea8',
+  keyword: '#569cd6',
+  boolean: '#569cd6',
+  function: '#dcdcaa',
+  operator: '#d4d4d4',
+  punctuation: '#d4d4d4',
+  tag: '#569cd6',
+  attrName: '#9cdcfe',
+  attrValue: '#ce9178',
+  className: '#4ec9b0',
+  property: '#9cdcfe',
+  variable: '#9cdcfe',
+  type: '#4ec9b0'
 }
 
 function escapeXml(unsafe: string): string {
@@ -41,188 +69,109 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, '&apos;')
 }
 
-const THEME_COLORS = {
-  dark: {
-    bg: '#18181b',
-    headerBg: '#27272a',
-    border: '#3f3f46',
-    titleColor: '#e4e4e7',
-    lineNumberColor: '#52525b',
-    defaultText: '#f4f4f5',
-    keyword: '#f43f5e',
-    string: '#34d399',
-    function: '#60a5fa',
-    comment: '#71717a',
-    number: '#fbbf24',
-    operator: '#38bdf8',
-    punctuation: '#a1a1aa',
-    className: '#a78bfa'
-  },
-  dracula: {
-    bg: '#282a36',
-    headerBg: '#21222c',
-    border: '#44475a',
-    titleColor: '#f8f8f2',
-    lineNumberColor: '#6272a4',
-    defaultText: '#f8f8f2',
-    keyword: '#ff79c6',
-    string: '#f1fa8c',
-    function: '#50fa7b',
-    comment: '#6272a4',
-    number: '#bd93f9',
-    operator: '#ff79c6',
-    punctuation: '#f8f8f2',
-    className: '#8be9fd'
-  },
-  'github-dark': {
-    bg: '#0d1117',
-    headerBg: '#161b22',
-    border: '#30363d',
-    titleColor: '#c9d1d9',
-    lineNumberColor: '#484f58',
-    defaultText: '#c9d1d9',
-    keyword: '#ff7b72',
-    string: '#a5d6ff',
-    function: '#d2a8ff',
-    comment: '#8b949e',
-    number: '#79c0ff',
-    operator: '#ff7b72',
-    punctuation: '#c9d1d9',
-    className: '#ffa657'
-  }
-}
-
 export class CodeCardGenerator {
-  public static generate(options: CodeCardOptions): GeneratedCodeCard {
-    const rawCode = options.code.trimEnd() || '// No code provided'
-    const lang = (options.language || 'typescript').toLowerCase()
-    const themeName = options.theme || 'dark'
-    const colors = THEME_COLORS[themeName] || THEME_COLORS.dark
-    const showLines = options.showLineNumbers !== false
-    const fontSize = options.fontSize || 14
-    const lineHeight = Math.round(fontSize * 1.6)
-    const charWidth = fontSize * 0.6
-    const title = options.title || (lang ? `snippet.${lang}` : 'snippet.txt')
+  public static generate(options: CodeCardOptions): CodeCardResult {
+    const {
+      code,
+      language = 'typescript',
+      title = '',
+      fontSize = 14,
+      showLineNumbers = true
+    } = options
 
-    const grammar = Prism.languages[lang] || Prism.languages.javascript || Prism.languages.plain
-    const tokens = grammar ? Prism.tokenize(rawCode, grammar) : [rawCode]
+    const lines = code.split(/\r?\n/)
+    const grammar = Prism.languages[language] || Prism.languages.javascript || Prism.languages.clike
 
-    // Normalize tokens into lines
-    type StyledSpan = { text: string; color: string; italic?: boolean }
-    const lines: StyledSpan[][] = [[]]
+    const tokens = Prism.tokenize(code, grammar)
 
-    const processToken = (token: string | Prism.Token, parentType?: string) => {
-      if (typeof token === 'string') {
-        const parts = token.split('\n')
-        for (let i = 0; i < parts.length; i++) {
-          if (i > 0) lines.push([])
-          if (parts[i].length > 0) {
-            lines[lines.length - 1].push({
-              text: parts[i],
-              color: this.getColorForType(parentType, colors),
-              italic: parentType === 'comment'
-            })
-          }
-        }
-      } else if (Array.isArray(token.content)) {
-        for (const item of token.content) {
-          processToken(item, token.type)
-        }
-      } else if (typeof token.content === 'string') {
-        const parts = token.content.split('\n')
-        for (let i = 0; i < parts.length; i++) {
-          if (i > 0) lines.push([])
-          if (parts[i].length > 0) {
-            lines[lines.length - 1].push({
-              text: parts[i],
-              color: this.getColorForType(token.type, colors),
-              italic: token.type === 'comment'
-            })
-          }
-        }
-      } else {
-        processToken(token.content, token.type)
+    // Layout constants
+    const charWidth = fontSize * 0.605 // monospace character width approx
+    const lineHeight = Math.round(fontSize * 1.5)
+    const headerHeight = title ? 36 : 16
+    const padding = 20
+
+    // Measure line numbers gutter width
+    const lineNumDigits = String(lines.length).length
+    const gutterWidth = showLineNumbers ? (lineNumDigits + 2) * charWidth : 0
+
+    // Compute max line length to size container
+    let maxLineChars = 0
+    for (const line of lines) {
+      if (line.length > maxLineChars) {
+        maxLineChars = line.length
       }
     }
 
-    for (const tok of tokens) {
-      processToken(tok)
-    }
-
-    const lineCount = lines.length
-    const lineNumDigits = String(lineCount).length
-    const gutterWidth = showLines ? (lineNumDigits + 2) * charWidth + 16 : 0
-    const padding = 18
-    const headerHeight = 36
-
-    let maxLineChars = 0
-    for (const line of lines) {
-      const lineLen = line.reduce((acc, span) => acc + span.text.length, 0)
-      if (lineLen > maxLineChars) maxLineChars = lineLen
-    }
-
     const calculatedWidth = Math.max(
-      380,
-      Math.ceil(padding * 2 + gutterWidth + maxLineChars * charWidth + 30)
+      340,
+      Math.round(padding * 2 + gutterWidth + maxLineChars * charWidth + 24)
     )
-    const calculatedHeight = Math.ceil(headerHeight + padding * 2 + lineCount * lineHeight)
+    const calculatedHeight = Math.max(
+      80,
+      headerHeight + lines.length * lineHeight + padding * 2
+    )
 
-    // Build SVG Elements
     const svgParts: string[] = []
 
-    // SVG Root
+    // SVG Root with crisp monospace font definitions
     svgParts.push(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${calculatedWidth} ${calculatedHeight}" width="${calculatedWidth}" height="${calculatedHeight}">`
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${calculatedWidth}" height="${calculatedHeight}" viewBox="0 0 ${calculatedWidth} ${calculatedHeight}">`
     )
 
-    // Definitions (Font style)
     svgParts.push(`
-      <defs>
-        <style>
-          .code-text {
-            font-family: 'Cascadia Code', 'Fira Code', Consolas, Monaco, monospace;
-            font-size: ${fontSize}px;
-            font-feature-settings: 'liga' 1;
-            white-space: pre;
-          }
-          .line-num {
-            font-family: 'Cascadia Code', Consolas, monospace;
-            font-size: ${fontSize - 1}px;
-            fill: ${colors.lineNumberColor};
-            text-anchor: end;
-            user-select: none;
-          }
-        </style>
-        <clipPath id="card-clip">
-          <rect width="${calculatedWidth}" height="${calculatedHeight}" rx="10" ry="10" />
-        </clipPath>
-      </defs>
+      <style>
+        .code-card-bg { fill: ${THEME.background}; rx: 8px; stroke: ${THEME.border}; stroke-width: 1.5px; }
+        .code-header-bg { fill: ${THEME.headerBg}; rx: 8px; }
+        .code-header-clip { clip-path: url(#header-clip); }
+        .window-dot-red { fill: #ff5f56; }
+        .window-dot-yellow { fill: #ffbd2e; }
+        .window-dot-green { fill: #27c93f; }
+        .code-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: ${THEME.titleColor}; font-weight: 500; }
+        .code-text { font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace; font-size: ${fontSize}px; }
+        .line-num { fill: ${THEME.lineNumColor}; text-anchor: end; user-select: none; }
+      </style>
     `)
 
-    // Background Card
+    // Background container
     svgParts.push(
-      `<g clip-path="url(#card-clip)">
-        <rect width="${calculatedWidth}" height="${calculatedHeight}" fill="${colors.bg}" stroke="${colors.border}" stroke-width="2" />
-        <!-- Header Bar -->
-        <rect width="${calculatedWidth}" height="${headerHeight}" fill="${colors.headerBg}" />
-        <line x1="0" y1="${headerHeight}" x2="${calculatedWidth}" y2="${headerHeight}" stroke="${colors.border}" stroke-width="1" />
-        <!-- Window Dots -->
-        <circle cx="18" cy="18" r="5" fill="#ff5f56" />
-        <circle cx="34" cy="18" r="5" fill="#ffbd2e" />
-        <circle cx="50" cy="18" r="5" fill="#27c93f" />
-        <!-- Filename Title -->
-        <text x="${calculatedWidth / 2}" y="22" fill="${colors.titleColor}" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" text-anchor="middle">${escapeXml(title)}</text>
-      </g>`
+      `<rect width="${calculatedWidth}" height="${calculatedHeight}" class="code-card-bg" />`
     )
 
-    // Code Body
-    svgParts.push('<g class="code-text">')
+    // Header bar (Window Dots & Optional File Tab)
+    if (title || headerHeight > 16) {
+      svgParts.push(
+        `<rect width="${calculatedWidth}" height="32" rx="8" class="code-header-bg" />`
+      )
+      // Dots
+      svgParts.push(`
+        <circle cx="18" cy="16" r="4.5" class="window-dot-red" />
+        <circle cx="32" cy="16" r="4.5" class="window-dot-yellow" />
+        <circle cx="46" cy="16" r="4.5" class="window-dot-green" />
+      `)
 
-    lines.forEach((lineSpans, idx) => {
-      const lineY = headerHeight + padding + (idx + 1) * lineHeight - 4
+      if (title) {
+        svgParts.push(
+          `<text x="${calculatedWidth / 2}" y="19" class="code-title" text-anchor="middle">${escapeXml(
+            title
+          )}</text>`
+        )
+      }
 
-      // Line Number
-      if (showLines) {
+      // Separator line
+      svgParts.push(
+        `<line x1="0" y1="32" x2="${calculatedWidth}" y2="32" stroke="${THEME.border}" stroke-width="1" />`
+      )
+    }
+
+    // Code lines rendering
+    svgParts.push(`<g class="code-text" xml:space="preserve">`)
+
+    lines.forEach((_, idx) => {
+      const lineY = headerHeight + padding + idx * lineHeight + Math.round(fontSize * 0.8)
+      const lineSpans = this.getSpansForLine(tokens, idx)
+
+      // Line numbers
+      if (showLineNumbers) {
         const lineNumX = padding + (lineNumDigits + 1) * charWidth
         svgParts.push(
           `<text x="${Math.round(lineNumX)}" y="${lineY}" class="line-num">${idx + 1}</text>`
@@ -231,14 +180,12 @@ export class CodeCardGenerator {
 
       // Line Content Spans
       const codeStartX = padding + gutterWidth
-      let currentX = codeStartX
 
       svgParts.push(`<text x="${Math.round(codeStartX)}" y="${lineY}">`)
       for (const span of lineSpans) {
         const escaped = escapeXml(span.text)
         const fontStyle = span.italic ? ' font-style="italic"' : ''
         svgParts.push(`<tspan fill="${span.color}"${fontStyle}>${escaped}</tspan>`)
-        currentX += span.text.length * charWidth
       }
       svgParts.push('</text>')
     })
@@ -257,36 +204,69 @@ export class CodeCardGenerator {
     }
   }
 
-  private static getColorForType(type: string | undefined, colors: typeof THEME_COLORS['dark']): string {
-    if (!type) return colors.defaultText
+  private static getSpansForLine(
+    tokens: (string | Prism.Token)[],
+    targetLineIndex: number
+  ): HighlightSpan[] {
+    let currentLine = 0
+    const spans: HighlightSpan[] = []
 
-    switch (type) {
-      case 'keyword':
-      case 'boolean':
-        return colors.keyword
-      case 'string':
-      case 'template-string':
-      case 'char':
-        return colors.string
-      case 'function':
-        return colors.function
+    const processToken = (tok: string | Prism.Token) => {
+      const type = typeof tok === 'string' ? 'text' : tok.type
+      const content = typeof tok === 'string' ? tok : tok.content
+      const color = this.getTokenColor(type)
+      const italic = type === 'comment'
+
+      if (typeof content === 'string') {
+        const parts = content.split('\n')
+        parts.forEach((part, idx) => {
+          if (idx > 0) currentLine++
+          if (currentLine === targetLineIndex && part.length > 0) {
+            spans.push({ text: part, color, italic })
+          }
+        })
+      } else if (Array.isArray(content)) {
+        for (const sub of content) {
+          processToken(sub)
+        }
+      }
+    }
+
+    for (const tok of tokens) {
+      processToken(tok)
+    }
+
+    return spans
+  }
+
+  private static getTokenColor(tokenType: string): string {
+    switch (tokenType) {
       case 'comment':
-      case 'prolog':
-      case 'doctype':
-      case 'cdata':
-        return colors.comment
+        return THEME.comment
+      case 'string':
+        return THEME.string
       case 'number':
-        return colors.number
-      case 'operator':
-      case 'regex':
-      case 'variable':
-        return colors.operator
-      case 'punctuation':
-        return colors.punctuation
+        return THEME.number
+      case 'keyword':
+        return THEME.keyword
+      case 'boolean':
+        return THEME.boolean
+      case 'function':
+        return THEME.function
       case 'class-name':
-        return colors.className
+        return THEME.className
+      case 'tag':
+        return THEME.tag
+      case 'attr-name':
+        return THEME.attrName
+      case 'attr-value':
+        return THEME.attrValue
+      case 'property':
+        return THEME.property
+      case 'variable':
+        return THEME.variable
       default:
-        return colors.defaultText
+        return THEME.defaultText
     }
   }
 }

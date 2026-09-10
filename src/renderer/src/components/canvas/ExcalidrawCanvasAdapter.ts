@@ -8,6 +8,7 @@ import {
   CanvasToolType,
   CanvasPointerSnapshot
 } from '@core/canvas/canvas-adapter'
+import { interpolateCamera } from '@core/canvas/camera-animation'
 import type {
   ExcalidrawImperativeAPI,
   AppState,
@@ -23,6 +24,7 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   private changeListener?: (sceneData: unknown) => void
   private unsubscribeOnChange?: () => void
   private pendingScene: unknown = null
+  private animationCancelFn?: () => void
 
   public setApi(api: ExcalidrawImperativeAPI | null): void {
     if (this.unsubscribeOnChange) {
@@ -64,6 +66,11 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   }
 
   public recordPointerEvent(event: React.PointerEvent<HTMLElement> | PointerEvent): void {
+    // If user presses a button / stylus touch on canvas while camera is animating, stop animation smoothly
+    if (event.buttons > 0) {
+      this.stopCameraAnimation()
+    }
+
     if (!this.pointerListener) return
 
     const appState = this.api?.getAppState()
@@ -212,7 +219,7 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     return {
       x: state.scrollX,
       y: state.scrollY,
-      zoom: state.zoom.value
+      zoom: state.zoom?.value ?? 1
     }
   }
 
@@ -227,6 +234,70 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     })
   }
 
+  public animateCameraTo(target: CameraState, durationMs = 600): Promise<void> {
+    // Cancel any current in-flight animation
+    this.stopCameraAnimation()
+
+    if (!this.api) {
+      return Promise.resolve()
+    }
+
+    if (durationMs <= 0) {
+      this.setCamera(target)
+      return Promise.resolve()
+    }
+
+    const start = this.getCamera()
+    const startTime = performance.now()
+
+    return new Promise<void>((resolve) => {
+      let rafId: number | null = null
+      let isCancelled = false
+
+      const cleanup = () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId)
+          rafId = null
+        }
+        if (this.animationCancelFn === cancelFn) {
+          this.animationCancelFn = undefined
+        }
+      }
+
+      const cancelFn = () => {
+        isCancelled = true
+        cleanup()
+        resolve()
+      }
+
+      this.animationCancelFn = cancelFn
+
+      const step = (currentTime: number) => {
+        if (isCancelled) return
+        const elapsed = currentTime - startTime
+        const t = Math.min(1, Math.max(0, elapsed / durationMs))
+        const interpolated = interpolateCamera(start, target, t)
+        this.setCamera(interpolated)
+
+        if (t >= 1) {
+          cleanup()
+          resolve()
+        } else {
+          rafId = requestAnimationFrame(step)
+        }
+      }
+
+      rafId = requestAnimationFrame(step)
+    })
+  }
+
+  public stopCameraAnimation(): void {
+    if (this.animationCancelFn) {
+      this.animationCancelFn()
+      this.animationCancelFn = undefined
+    }
+  }
+
   public screenToScene(clientX: number, clientY: number): Point {
     const camera = this.getCamera()
     return {
@@ -236,6 +307,7 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   }
 
   public zoomTo(bounds: Bounds): void {
+    this.stopCameraAnimation()
     if (!this.api) return
     // Adjust camera to center on bounds
     const viewportWidth = window.innerWidth
@@ -251,6 +323,7 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   }
 
   public resetView(): void {
+    this.stopCameraAnimation()
     this.setCamera({ x: 0, y: 0, zoom: 1 })
   }
 
@@ -330,6 +403,7 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   }
 
   public destroy(): void {
+    this.stopCameraAnimation()
     if (this.unsubscribeOnChange) {
       this.unsubscribeOnChange()
       this.unsubscribeOnChange = undefined

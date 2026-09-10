@@ -76,6 +76,8 @@ export interface CanvasAdapter {
 
   getCamera(): CameraState
   setCamera(camera: CameraState): void
+  animateCameraTo(target: CameraState, durationMs?: number): Promise<void>
+  stopCameraAnimation(): void
   zoomTo(bounds: Bounds): void
   resetView(): void
   screenToScene(clientX: number, clientY: number): Point
