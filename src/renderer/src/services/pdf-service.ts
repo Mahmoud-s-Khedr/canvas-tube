@@ -1,8 +1,36 @@
 import * as pdfjsLib from 'pdfjs-dist'
+// @ts-ignore - pdf.worker.mjs is an ES module bundled with pdfjs-dist
+import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 
-// Set worker path relative to public directory (zero CDN dependencies)
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+// Polyfill ECMAScript features if running in environments lacking them
+if (typeof (Promise as unknown as Record<string, unknown>).try !== 'function') {
+  ;(Promise as unknown as Record<string, unknown>).try = function (
+    fn: (...args: unknown[]) => unknown,
+    ...args: unknown[]
+  ) {
+    return new Promise((resolve) => resolve(fn(...args)))
+  }
+}
+if (typeof (Uint8Array.prototype as unknown as Record<string, unknown>).toHex !== 'function') {
+  ;(Uint8Array.prototype as unknown as Record<string, unknown>).toHex = function () {
+    return Array.from(this as unknown as Uint8Array)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+}
+
+// In modern Electron packaged apps running on file:// protocol, external Web Workers
+// fail to load because origin is "null" and absolute paths resolve to file:///<root>.
+// Supplying pdfjsWorker directly to globalThis ensures self-contained,
+// zero-dependency in-memory PDF parsing across development, production, and tests.
+if (typeof window !== 'undefined') {
+  ;(window as unknown as Record<string, unknown>).pdfjsWorker = pdfjsWorker
+}
+;(globalThis as unknown as Record<string, unknown>).pdfjsWorker = pdfjsWorker
+
+// Clear workerSrc to ensure PDF.js relies on the embedded mainThreadWorkerMessageHandler
+pdfjsLib.GlobalWorkerOptions.workerSrc = ''
 
 export interface RenderedPage {
   pageNumber: number
@@ -17,11 +45,17 @@ export class PdfService {
   private static cache = new Map<string, PDFDocumentProxy>()
 
   public static async loadPdfFromBase64(base64Data: string, docId?: string): Promise<PDFDocumentProxy> {
+    if (!base64Data) {
+      throw new Error('No PDF data provided')
+    }
+
     if (docId && this.cache.has(docId)) {
       return this.cache.get(docId)!
     }
 
-    const binaryString = atob(base64Data)
+    // Strip optional data URI scheme prefix (e.g. data:application/pdf;base64,) and any whitespace/newlines
+    const base64Clean = (base64Data.includes(',') ? base64Data.split(',')[1] : base64Data).replace(/\s+/g, '')
+    const binaryString = atob(base64Clean)
     const len = binaryString.length
     const bytes = new Uint8Array(len)
     for (let i = 0; i < len; i++) {

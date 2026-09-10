@@ -39,6 +39,30 @@ export const App: React.FC = () => {
   const [isRecordingMode, setIsRecordingMode] = useState(false)
   const [isInspectorOpen, setIsInspectorOpen] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("canvastube_sidebar_width")
+      if (saved) {
+        const parsed = parseInt(saved, 10)
+        if (!isNaN(parsed) && parsed >= 200 && parsed <= 800) {
+          return parsed
+        }
+      }
+    } catch {
+      // Ignore localStorage read errors
+    }
+    return 280
+  })
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false)
+
+  const handleSidebarWidthChange = useCallback((newWidth: number) => {
+    setSidebarWidth(newWidth)
+    try {
+      localStorage.setItem("canvastube_sidebar_width", String(newWidth))
+    } catch {
+      // Ignore localStorage write errors
+    }
+  }, [])
   const [pointerSnapshot, setPointerSnapshot] = useState<CanvasPointerSnapshot | null>(null)
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null)
 
@@ -410,7 +434,10 @@ export const App: React.FC = () => {
       showToast(`Loaded "${updatedDoc.filename}" (${pdfDoc.numPages} slides)`, 'success')
     } catch (err) {
       console.error('[App] Failed to load imported PDF:', err)
-      showToast('Failed to parse and load PDF document.', 'warning')
+      showToast(
+        `Failed to parse and load PDF document: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        'warning'
+      )
     }
   }, [showToast])
 
@@ -638,6 +665,10 @@ export const App: React.FC = () => {
           adapter={adapter}
           isOpen={isSidebarOpen}
           onToggle={() => setIsSidebarOpen((prev) => !prev)}
+          width={sidebarWidth}
+          onWidthChange={handleSidebarWidthChange}
+          onResizeStart={() => setIsResizingSidebar(true)}
+          onResizeEnd={() => setIsResizingSidebar(false)}
         />
       )}
 
@@ -646,6 +677,8 @@ export const App: React.FC = () => {
         adapter={adapter}
         isRecordingMode={isRecordingMode}
         isSidebarOpen={isSidebarOpen}
+        sidebarWidth={sidebarWidth}
+        isResizingSidebar={isResizingSidebar}
         onDropPdfPage={handleDropPdfPage}
       />
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   createDefaultManifest,
   validateProjectManifest,
@@ -7,6 +7,15 @@ import {
   DocumentEntry,
   AssetEntry
 } from '../src/core/project/project-manifest'
+import { PdfService } from '../src/renderer/src/services/pdf-service'
+
+// Minimal 1-page valid PDF document
+const MINIMAL_PDF_BASE64 =
+  'JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9U' +
+  'eXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL01lZGlh' +
+  'Qm94WzAgMCAxMDAgMTAwXS9QYXJlbnQgMiAwIFIvUmVzb3VyY2VzPDw+Pj4+ZW5kb2JqCnhyZWYKMCA0CjAw' +
+  'MDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDEwIDAwMDAwIG4gCjAwMDAwMDAwNjAgMDAwMDAgbiAKMDAwMDAw' +
+  'MDExNyAwMDAwMCBuIAp0cmFpbGVyPDwvU2l6ZSA0L1Jvb3QgMSAwIFI+PgpzdGFydHhyZWYKMTk5CiUlRU9G'
 
 describe('PDF & Document Manifest Integration', () => {
   it('stores and validates PDF document entries in manifest', () => {
@@ -90,5 +99,40 @@ describe('PDF & Document Manifest Integration', () => {
     const slideElement = deserializedScene.elements[0]
     expect(slideElement.locked).toBe(true)
     expect(slideElement.customData.pageNumber).toBe(1)
+  })
+})
+
+describe('PdfService Base64 Loading and In-Memory Worker', () => {
+  beforeEach(() => {
+    PdfService.clearCache()
+  })
+
+  it('loads valid base64 PDF and retrieves document properties', async () => {
+    const doc = await PdfService.loadPdfFromBase64(MINIMAL_PDF_BASE64, 'test-doc-1')
+    expect(doc).toBeDefined()
+    expect(doc.numPages).toBe(1)
+
+    const page = await doc.getPage(1)
+    expect(page.pageNumber).toBe(1)
+    const viewport = page.getViewport({ scale: 1.0 })
+    expect(viewport.width).toBe(100)
+    expect(viewport.height).toBe(100)
+  })
+
+  it('handles base64 with data URI prefix and surrounding whitespace', async () => {
+    const dataUri = `data:application/pdf;base64,\n  ${MINIMAL_PDF_BASE64}\n`
+    const doc = await PdfService.loadPdfFromBase64(dataUri, 'test-doc-data-uri')
+    expect(doc).toBeDefined()
+    expect(doc.numPages).toBe(1)
+  })
+
+  it('caches loaded document proxy by docId', async () => {
+    const doc1 = await PdfService.loadPdfFromBase64(MINIMAL_PDF_BASE64, 'cached-doc')
+    const doc2 = await PdfService.loadPdfFromBase64(MINIMAL_PDF_BASE64, 'cached-doc')
+    expect(doc1).toBe(doc2)
+  })
+
+  it('rejects with error when empty data is provided', async () => {
+    await expect(PdfService.loadPdfFromBase64('')).rejects.toThrow('No PDF data provided')
   })
 })
