@@ -28,6 +28,78 @@ import {
   getCommonBounds
 } from '@excalidraw/excalidraw'
 
+
+function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
+  switch (shape.type) {
+    case 'rectangle':
+    case 'diamond':
+    case 'ellipse':
+      return {
+        id,
+        type: shape.type,
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+        strokeColor: shape.strokeColor || '#1e1e1e',
+        backgroundColor: shape.backgroundColor || 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        roughness: 1,
+        locked: shape.locked ?? false
+      }
+    case 'image':
+      return {
+        id,
+        type: 'image',
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+        fileId: shape.fileId,
+        locked: shape.locked ?? false
+      }
+    case 'text':
+      return {
+        id,
+        type: 'text',
+        x: shape.x,
+        y: shape.y,
+        text: shape.text || 'Text',
+        fontSize: 20,
+        fontFamily: 1,
+        strokeColor: shape.strokeColor || '#1e1e1e',
+        locked: shape.locked ?? false
+      }
+    case 'arrow':
+      return {
+        id,
+        type: 'arrow',
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+        points: [
+          [0, 0],
+          [shape.width, shape.height]
+        ],
+        strokeColor: shape.strokeColor || '#1e1e1e',
+        strokeWidth: 2,
+        locked: shape.locked ?? false
+      }
+    default:
+      return {
+        id,
+        type: 'rectangle',
+        x: shape.x,
+        y: shape.y,
+        width: shape.width,
+        height: shape.height,
+        locked: shape.locked ?? false
+      }
+  }
+}
+
 export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   public readonly name = 'ExcalidrawCanvasAdapter'
   private api: ExcalidrawImperativeAPI | null = null
@@ -118,87 +190,35 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
 
     const id = `el_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
     const currentElements = this.api.getSceneElements()
-
-    let skeleton: any
-    switch (shape.type) {
-      case 'rectangle':
-      case 'diamond':
-      case 'ellipse':
-        skeleton = {
-          id,
-          type: shape.type,
-          x: shape.x,
-          y: shape.y,
-          width: shape.width,
-          height: shape.height,
-          strokeColor: shape.strokeColor || '#1e1e1e',
-          backgroundColor: shape.backgroundColor || 'transparent',
-          fillStyle: 'solid',
-          strokeWidth: 2,
-          roughness: 1,
-          locked: shape.locked ?? false
-        }
-        break
-      case 'image':
-        skeleton = {
-          id,
-          type: 'image',
-          x: shape.x,
-          y: shape.y,
-          width: shape.width,
-          height: shape.height,
-          fileId: shape.fileId,
-          locked: shape.locked ?? false
-        }
-        break
-      case 'text':
-        skeleton = {
-          id,
-          type: 'text',
-          x: shape.x,
-          y: shape.y,
-          text: shape.text || 'Text',
-          fontSize: 20,
-          fontFamily: 1,
-          strokeColor: shape.strokeColor || '#1e1e1e',
-          locked: shape.locked ?? false
-        }
-        break
-      case 'arrow':
-        skeleton = {
-          id,
-          type: 'arrow',
-          x: shape.x,
-          y: shape.y,
-          width: shape.width,
-          height: shape.height,
-          points: [
-            [0, 0],
-            [shape.width, shape.height]
-          ],
-          strokeColor: shape.strokeColor || '#1e1e1e',
-          strokeWidth: 2,
-          locked: shape.locked ?? false
-        }
-        break
-      default:
-        skeleton = {
-          id,
-          type: 'rectangle',
-          x: shape.x,
-          y: shape.y,
-          width: shape.width,
-          height: shape.height,
-          locked: shape.locked ?? false
-        }
-    }
-
+    const skeleton = createShapeSkeleton(shape, id)
     const converted = convertToExcalidrawElements([skeleton])
     this.api.updateScene({
       elements: [...currentElements, ...converted]
     })
 
     return id
+  }
+
+  public addObjects(shapes: CanvasShapeInput[]): ObjectId[] {
+    if (!this.api) {
+      throw new Error('ExcalidrawCanvasAdapter: API is not ready')
+    }
+    if (shapes.length === 0) return []
+
+    const currentElements = this.api.getSceneElements()
+    const ids: ObjectId[] = []
+    const skeletons = shapes.map((shape, index) => {
+      const id = `el_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 8)}`
+      ids.push(id)
+      return createShapeSkeleton(shape, id)
+    })
+
+    const converted = convertToExcalidrawElements(skeletons)
+    this.api.updateScene({
+      elements: [...currentElements, ...converted]
+    })
+
+    return ids
   }
 
   public removeObject(id: ObjectId): void {
@@ -425,6 +445,31 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   public addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void {
     if (!this.api) return
     this.api.addFiles([file as any])
+  }
+
+  public pruneUnusedFiles(): number {
+    if (!this.api) return 0
+    const elements = this.api.getSceneElements().filter((el) => !el.isDeleted)
+    const usedFileIds = new Set<string>()
+    for (const el of elements) {
+      if ((el as any).fileId) {
+        usedFileIds.add((el as any).fileId)
+      }
+    }
+    const currentFiles = this.api.getFiles()
+    let prunedCount = 0
+    const nextFiles: Record<string, any> = {}
+    for (const [fileId, fileData] of Object.entries(currentFiles)) {
+      if (usedFileIds.has(fileId)) {
+        nextFiles[fileId] = fileData
+      } else {
+        prunedCount++
+      }
+    }
+    if (prunedCount > 0 && (this.api as any).files) {
+      ;(this.api as any).files = nextFiles
+    }
+    return prunedCount
   }
 
   public getElementsCount(scope: 'all' | 'selection' = 'all'): number {

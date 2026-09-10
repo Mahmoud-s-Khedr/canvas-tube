@@ -39,6 +39,7 @@ export interface SystemInfo {
   platform: string
   arch: string
   isWayland: boolean
+  compositor?: string
   electronVersion: string
   nodeVersion: string
   chromeVersion: string

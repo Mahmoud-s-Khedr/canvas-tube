@@ -105,7 +105,8 @@ export const InputInspector: React.FC<InputInspectorProps> = ({
               <Mouse size={18} color="#94a3b8" />
             )}
             <span style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {snapshot ? snapshot.pointerType : 'NO INPUT'}\n            </span>
+              {snapshot ? snapshot.pointerType : 'NO INPUT'}
+            </span>
           </div>
           <span
             style={{
@@ -232,7 +233,7 @@ export const InputInspector: React.FC<InputInspectorProps> = ({
                 {systemInfo.platform === 'win32'
                   ? 'Windows (PointerEvents / DirectManipulation)'
                   : systemInfo.isWayland
-                    ? 'Wayland'
+                    ? `Wayland (${systemInfo.compositor || 'Native'})`
                     : 'X11'}
               </span>
             </div>

@@ -157,15 +157,19 @@ export const App: React.FC = () => {
     }
   }, [])
 
-  // Listen to pointer events from adapter
+  // Listen to pointer events from adapter only when inspector is open to avoid 60-120fps re-render churn during drawing
   useEffect(() => {
+    if (!isInspectorOpen) {
+      adapter.setPointerListener(undefined)
+      return
+    }
     adapter.setPointerListener((snapshot) => {
       setPointerSnapshot(snapshot)
     })
     return () => {
       adapter.setPointerListener(undefined)
     }
-  }, [adapter])
+  }, [adapter, isInspectorOpen])
 
   // Fetch host system information (Wayland, Electron version, etc.)
   useEffect(() => {
@@ -179,6 +183,7 @@ export const App: React.FC = () => {
 
   // File / Project handlers
   const handleNewProject = useCallback(() => {
+    PdfService.clearCache()
     const fresh = createDefaultManifest('New Architecture Canvas')
     setManifest(fresh)
     setProjectDir(null)
@@ -195,6 +200,7 @@ export const App: React.FC = () => {
     if (!window.desktopApi?.openProject) return
     const result = await window.desktopApi.openProject()
     if (result) {
+      PdfService.clearCache()
       setProjectDir(result.projectDir)
       setManifest(result.bundle.manifest)
       adapter.deserialize(result.bundle.sceneData)

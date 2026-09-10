@@ -76,6 +76,7 @@ export interface CanvasAdapter {
   readonly name: string
 
   addObject(shape: CanvasShapeInput): ObjectId
+  addObjects?(shapes: CanvasShapeInput[]): ObjectId[]
   removeObject(id: ObjectId): void
   getSelection(): ObjectId[]
   clearSelection(): void
@@ -98,6 +99,7 @@ export interface CanvasAdapter {
   deserialize(scene: unknown): void
 
   addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void
+  pruneUnusedFiles?(): number
 
   // Background / Chroma-key methods
   getBackgroundColor(): string

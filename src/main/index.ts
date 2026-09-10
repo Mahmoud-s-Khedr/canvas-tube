@@ -3,11 +3,21 @@ import * as path from 'node:path'
 import * as fs from 'node:fs'
 import { ProjectService } from './services/project-service'
 import { CanvasProjectBundle, validateProjectManifest } from '../core/project/project-manifest'
+import { detectCompositor, isWaylandEnv } from '../core/wayland/wayland-detector'
 
 let mainWindow: BrowserWindow | null = null
 
 function isWaylandSession(): boolean {
-  return process.env.XDG_SESSION_TYPE === 'wayland' || Boolean(process.env.WAYLAND_DISPLAY)
+  return isWaylandEnv(process.env)
+}
+
+// Configure Linux Wayland Ozone switches before app is ready
+if (process.platform === 'linux') {
+  if (isWaylandSession() || process.env.ELECTRON_OZONE_PLATFORM_HINT === 'wayland') {
+    app.commandLine.appendSwitch('ozone-platform-hint', 'auto')
+    app.commandLine.appendSwitch('enable-features', 'UseOzonePlatform,WaylandWindowDecorations')
+    app.commandLine.appendSwitch('enable-pointer-lock-options')
+  }
 }
 
 function createWindow(): void {
@@ -42,10 +52,12 @@ function createWindow(): void {
 
 function setupIpcHandlers(): void {
   ipcMain.handle('system:getInfo', () => {
+    const compositor = detectCompositor(process.env)
     return {
       platform: process.platform,
       arch: process.arch,
       isWayland: isWaylandSession(),
+      compositor: compositor.name,
       electronVersion: process.versions.electron,
       nodeVersion: process.versions.node,
       chromeVersion: process.versions.chrome

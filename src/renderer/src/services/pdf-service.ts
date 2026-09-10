@@ -79,35 +79,39 @@ export class PdfService {
     scale = 2.0
   ): Promise<{ dataUrl: string; width: number; height: number; aspectRatio: number }> {
     const page = await pdfDoc.getPage(pageNumber)
-    const viewport = page.getViewport({ scale })
+    try {
+      const viewport = page.getViewport({ scale })
 
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.floor(viewport.width)
-    canvas.height = Math.floor(viewport.height)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.floor(viewport.width)
+      canvas.height = Math.floor(viewport.height)
 
-    const context = canvas.getContext('2d')
-    if (!context) {
-      throw new Error('Failed to create 2D canvas context for PDF rendering')
-    }
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Failed to create 2D canvas context for PDF rendering')
+      }
 
-    // Fill white background in case PDF page is transparent
-    context.fillStyle = '#ffffff'
-    context.fillRect(0, 0, canvas.width, canvas.height)
+      // Fill white background in case PDF page is transparent
+      context.fillStyle = '#ffffff'
+      context.fillRect(0, 0, canvas.width, canvas.height)
 
-    await page.render({
-      canvasContext: context,
-      viewport,
-      canvas
-    }).promise
+      await page.render({
+        canvasContext: context,
+        viewport,
+        canvas
+      }).promise
 
-    const dataUrl = canvas.toDataURL('image/png')
-    const unscaledViewport = page.getViewport({ scale: 1.0 })
+      const dataUrl = canvas.toDataURL('image/png')
+      const unscaledViewport = page.getViewport({ scale: 1.0 })
 
-    return {
-      dataUrl,
-      width: Math.round(unscaledViewport.width),
-      height: Math.round(unscaledViewport.height),
-      aspectRatio: unscaledViewport.width / unscaledViewport.height
+      return {
+        dataUrl,
+        width: Math.round(unscaledViewport.width),
+        height: Math.round(unscaledViewport.height),
+        aspectRatio: unscaledViewport.width / unscaledViewport.height
+      }
+    } finally {
+      page.cleanup()
     }
   }
 
@@ -117,32 +121,57 @@ export class PdfService {
     thumbWidth = 180
   ): Promise<string> {
     const page = await pdfDoc.getPage(pageNumber)
-    const unscaledViewport = page.getViewport({ scale: 1.0 })
-    const scale = thumbWidth / unscaledViewport.width
-    const viewport = page.getViewport({ scale })
+    try {
+      const unscaledViewport = page.getViewport({ scale: 1.0 })
+      const scale = thumbWidth / unscaledViewport.width
+      const viewport = page.getViewport({ scale })
 
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.floor(viewport.width)
-    canvas.height = Math.floor(viewport.height)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.floor(viewport.width)
+      canvas.height = Math.floor(viewport.height)
 
-    const context = canvas.getContext('2d')
-    if (!context) {
-      throw new Error('Failed to create 2D canvas context for PDF thumbnail')
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Failed to create 2D canvas context for PDF thumbnail')
+      }
+
+      context.fillStyle = '#ffffff'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+
+      await page.render({
+        canvasContext: context,
+        viewport,
+        canvas
+      }).promise
+
+      return canvas.toDataURL('image/png')
+    } finally {
+      page.cleanup()
     }
-
-    context.fillStyle = '#ffffff'
-    context.fillRect(0, 0, canvas.width, canvas.height)
-
-    await page.render({
-      canvasContext: context,
-      viewport,
-      canvas
-    }).promise
-
-    return canvas.toDataURL('image/png')
   }
 
   public static clearCache(): void {
+    for (const doc of this.cache.values()) {
+      try {
+        doc.cleanup()
+        doc.loadingTask?.destroy?.()
+      } catch (err) {
+        console.warn('[PdfService] Error cleaning up PDF document:', err)
+      }
+    }
     this.cache.clear()
+  }
+
+  public static evictDocument(docId: string): void {
+    const doc = this.cache.get(docId)
+    if (doc) {
+      try {
+        doc.cleanup()
+        doc.loadingTask?.destroy?.()
+      } catch (err) {
+        console.warn('[PdfService] Error cleaning up PDF document:', err)
+      }
+      this.cache.delete(docId)
+    }
   }
 }

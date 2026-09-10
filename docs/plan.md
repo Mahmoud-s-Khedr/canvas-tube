@@ -174,7 +174,7 @@
   - [x] Update `InputInspector` host detection for Windows PointerEvents / DirectManipulation.
 - [ ] **macOS Support**
   - [ ] macOS `.dmg` with Apple Silicon (arm64) and Intel (x64) universal builds.
-- [ ] **Performance Profiling & Large Canvas Optimization**
-  - [ ] Virtualized rendering benchmark for scenes with >5,000 elements.
-  - [ ] Memory leak audit during continuous 2-hour drawing sessions.
-  - [ ] Automated regression testing on Wayland compositors (GNOME Mutter, KDE KWin, Hyprland).
+- [x] **Performance Profiling & Large Canvas Optimization**
+  - [x] Virtualized rendering benchmark for scenes with >5,000 elements (frustum culling, SpatialGrid index querying in <15ms, batch insertion).
+  - [x] Memory leak audit during continuous 2-hour drawing sessions (root re-render throttle, PDF page/worker eviction, unreferenced file pruning).
+  - [x] Automated regression testing on Wayland compositors (GNOME Mutter, KDE KWin, Hyprland) with Ozone platform switch injection and tablet-v2 validation.
