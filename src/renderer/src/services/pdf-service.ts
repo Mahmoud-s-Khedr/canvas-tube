@@ -1,5 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist'
-// @ts-ignore - pdf.worker.mjs is an ES module bundled with pdfjs-dist
+// @ts-expect-error - pdf.worker.mjs is an ES module bundled with pdfjs-dist
 import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 
