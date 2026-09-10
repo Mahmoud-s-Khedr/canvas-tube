@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import {
   IconRegistry,
   IconDefinition,
@@ -12,17 +12,84 @@ interface IconSidebarProps {
   adapter: CanvasAdapter | null
   isOpen: boolean
   onToggle: () => void
+  width?: number
+  onWidthChange?: (width: number) => void
+  onResizeStart?: () => void
+  onResizeEnd?: () => void
 }
 
-export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onToggle }) => {
+export const IconSidebar: React.FC<IconSidebarProps> = ({
+  adapter,
+  isOpen,
+  onToggle,
+  width,
+  onWidthChange,
+  onResizeStart,
+  onResizeEnd
+}) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProvider, setSelectedProvider] = useState<IconProvider | 'all'>('all')
+
+  const sidebarWidth = width ?? 280
+  const [isDragging, setIsDragging] = useState(false)
+  const isDraggingRef = useRef(false)
+  const startXRef = useRef(0)
+  const startWidthRef = useRef(sidebarWidth)
 
   const registry = useMemo(() => new IconRegistry(INITIAL_ICON_DEFINITIONS), [])
 
   const filteredIcons = useMemo(() => {
     return registry.search(searchQuery, selectedProvider)
   }, [registry, searchQuery, selectedProvider])
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragging(true)
+      isDraggingRef.current = true
+      startXRef.current = e.clientX
+      startWidthRef.current = sidebarWidth
+      onResizeStart?.()
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!isDraggingRef.current) return
+        const deltaX = moveEvent.clientX - startXRef.current
+        const minW = 220
+        const maxW = Math.max(minW, Math.min(window.innerWidth * 0.75, 720))
+        const newWidth = Math.round(Math.max(minW, Math.min(maxW, startWidthRef.current + deltaX)))
+        onWidthChange?.(newWidth)
+      }
+
+      const handleMouseUp = () => {
+        setIsDragging(false)
+        isDraggingRef.current = false
+        onResizeEnd?.()
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    },
+    [sidebarWidth, onWidthChange, onResizeStart, onResizeEnd]
+  )
+
+  const handleResetWidth = useCallback(() => {
+    onWidthChange?.(280)
+  }, [onWidthChange])
+
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [])
 
   const handleAddIcon = (icon: IconDefinition) => {
     if (!adapter) return
@@ -107,7 +174,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
         top: 48,
         left: 0,
         bottom: 0,
-        width: 280,
+        width: sidebarWidth,
         backgroundColor: 'rgba(24, 24, 27, 0.96)',
         backdropFilter: 'blur(10px)',
         borderRight: '1px solid #27272a',
@@ -115,9 +182,49 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '4px 0 15px rgba(0, 0, 0, 0.4)',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        userSelect: isDragging ? 'none' : 'auto'
       }}
     >
+      {/* Draggable Resize Handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleResetWidth}
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: -4,
+          bottom: 0,
+          width: 8,
+          cursor: 'col-resize',
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        title="Drag to resize sidebar (Double-click to reset to default)"
+      >
+        <div
+          style={{
+            width: 2,
+            height: '100%',
+            backgroundColor: isDragging ? '#38bdf8' : 'transparent',
+            borderRadius: 1,
+            transition: isDragging ? 'none' : 'background-color 0.15s ease'
+          }}
+          onMouseEnter={(e) => {
+            if (!isDragging) {
+              e.currentTarget.style.backgroundColor = '#38bdf8'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isDragging) {
+              e.currentTarget.style.backgroundColor = 'transparent'
+            }
+          }}
+        />
+      </div>
+
       {/* Header */}
       <div
         style={{
@@ -232,7 +339,8 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
           overflowY: 'auto',
           padding: '12px 14px',
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateColumns:
+            sidebarWidth < 240 ? '1fr' : 'repeat(auto-fill, minmax(105px, 1fr))',
           gap: 10,
           alignContent: 'start'
         }}
@@ -251,14 +359,16 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
               backgroundColor: '#18181b',
               border: '1px solid #3f3f46',
               borderRadius: 8,
-              padding: '10px 8px',
+              padding: '10px 6px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               cursor: 'grab',
               transition: 'all 0.15s ease',
               textAlign: 'center',
-              userSelect: 'none'
+              userSelect: 'none',
+              minWidth: 0,
+              overflow: 'hidden'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = '#38bdf8'
@@ -280,7 +390,12 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
                 fontSize: 11,
                 color: '#e4e4e7',
                 fontWeight: 500,
-                lineHeight: 1.2
+                lineHeight: 1.2,
+                wordBreak: 'break-word',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden'
               }}
             >
               {icon.name}
