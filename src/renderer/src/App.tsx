@@ -329,7 +329,7 @@ export const App: React.FC = () => {
       setIsDocumentDockOpen(true)
     } catch (err) {
       console.error('[App] Failed to load imported PDF:', err)
-      alert('Failed to parse and load PDF document.')
+      alert(`Failed to parse and load PDF document: ${err instanceof Error ? err.message : "Unknown error"}`)
     }
   }, [])
 

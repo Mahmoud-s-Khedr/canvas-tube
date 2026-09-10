@@ -35,6 +35,12 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
 
   const numPages = pdfDoc?.numPages ?? documentEntry?.pageCount ?? 0
 
+  // Reset state when active document changes
+  useEffect(() => {
+    setThumbnails(new Map())
+    setSelectedPage(1)
+  }, [documentEntry?.id])
+
   // Asynchronously render thumbnails for all pages
   useEffect(() => {
     if (!pdfDoc || numPages === 0) return
@@ -51,6 +57,8 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
           if (isMounted) {
             setThumbnails((prev) => new Map(prev).set(p, thumb))
           }
+          // Yield main thread to keep UI responsive during multi-page rendering
+          await new Promise((resolve) => setTimeout(resolve, 0))
         } catch (err) {
           console.error(`[DocumentSlideDock] Failed rendering thumbnail for page ${p}:`, err)
         }
@@ -62,7 +70,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
     return () => {
       isMounted = false
     }
-  }, [pdfDoc, numPages])
+  }, [pdfDoc, numPages, documentEntry?.id])
 
   const insertPageAtCoordinates = useCallback(
     async (pageNumber: number, sceneX: number, sceneY: number, targetWidth = 800) => {
