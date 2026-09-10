@@ -99,6 +99,10 @@ export interface CanvasAdapter {
 
   addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void
 
+  // Background / Chroma-key methods
+  getBackgroundColor(): string
+  setBackgroundColor(color: string): void
+
   // Export subsystem methods
   exportCanvas(config: CanvasExportConfig): Promise<CanvasExportResult>
   getExportBounds(scope: ExportScope, customBounds?: Bounds): Bounds | null

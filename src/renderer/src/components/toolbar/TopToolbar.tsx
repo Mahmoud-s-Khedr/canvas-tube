@@ -13,7 +13,9 @@ import {
   Plus,
   Download,
   ChevronDown,
-  FileDown
+  FileDown,
+  Radio,
+  Clock,
 } from 'lucide-react'
 
 interface TopToolbarProps {
@@ -37,6 +39,12 @@ interface TopToolbarProps {
   onImportImage: () => void
   onOpenExport: () => void
   onToggleDevTools: () => void
+  onOpenChapters?: () => void
+  chaptersCount?: number
+  onOpenObs?: () => void
+  obsStatus?: string
+  chromaMode?: string
+  onSelectChroma?: (mode: string) => void
 }
 
 export const TopToolbar: React.FC<TopToolbarProps> = ({
@@ -59,9 +67,16 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   onSaveProjectAs,
   onImportImage,
   onOpenExport,
-  onToggleDevTools
+  onToggleDevTools,
+  onOpenChapters,
+  chaptersCount = 0,
+  onOpenObs,
+  obsStatus = 'disconnected',
+  chromaMode = 'dark',
+  onSelectChroma
 }) => {
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false)
+  const [isChromaMenuOpen, setIsChromaMenuOpen] = useState(false)
   const saveMenuRef = useRef<HTMLDivElement>(null)
 
   // Close Save dropdown on click outside
@@ -408,6 +423,142 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
             <Plus size={14} color="#60a5fa" />
           </button>
         </div>
+      </div>
+
+      {/* Right: Recording, OBS, Chapters, & Production Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Chroma Background Switcher */}
+        {onSelectChroma && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsChromaMenuOpen((p) => !p)}
+              style={{
+                ...buttonStyle,
+                padding: '5px 8px',
+                gap: 5
+              }}
+              title="Switch Canvas Background / Chroma-Key Mode"
+            >
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  backgroundColor:
+                    chromaMode === 'green'
+                      ? '#00ff00'
+                      : chromaMode === 'blue'
+                        ? '#0000ff'
+                        : chromaMode === 'magenta'
+                          ? '#ff00ff'
+                          : chromaMode === 'light'
+                            ? '#ffffff'
+                            : '#121212',
+                  border: '1px solid #71717a'
+                }}
+              />
+              <span style={{ fontSize: 11, textTransform: 'capitalize' }}>{chromaMode}</span>
+              <ChevronDown size={11} color="#a1a1aa" />
+            </button>
+
+            {isChromaMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  right: 0,
+                  backgroundColor: '#18181b',
+                  border: '1px solid #3f3f46',
+                  borderRadius: 6,
+                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.6)',
+                  zIndex: 100,
+                  minWidth: 140,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: 4,
+                  gap: 2
+                }}
+              >
+                {[
+                  { id: 'dark', label: 'Dark Canvas', color: '#121212' },
+                  { id: 'light', label: 'Light Canvas', color: '#ffffff' },
+                  { id: 'green', label: 'Chroma Green', color: '#00ff00' },
+                  { id: 'blue', label: 'Chroma Blue', color: '#0000ff' },
+                  { id: 'magenta', label: 'Chroma Magenta', color: '#ff00ff' }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setIsChromaMenuOpen(false)
+                      onSelectChroma(item.id)
+                    }}
+                    style={{
+                      ...menuItemStyle,
+                      backgroundColor: chromaMode === item.id ? '#27272a' : 'transparent'
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        backgroundColor: item.color,
+                        border: '1px solid #71717a'
+                      }}
+                    />
+                    <span style={{ flex: 1, textAlign: 'left', fontSize: 12 }}>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* OBS WebSocket Button */}
+        {onOpenObs && (
+          <button
+            onClick={onOpenObs}
+            style={{
+              ...buttonStyle,
+              backgroundColor: obsStatus === 'connected' ? 'rgba(34, 197, 94, 0.15)' : '#27272a',
+              borderColor: obsStatus === 'connected' ? '#22c55e' : '#3f3f46',
+              color: obsStatus === 'connected' ? '#86efac' : '#e4e4e7'
+            }}
+            title={`OBS WebSocket: ${obsStatus}`}
+          >
+            <Radio size={14} color={obsStatus === 'connected' ? '#22c55e' : '#9ca3af'} />
+            <span>OBS</span>
+          </button>
+        )}
+
+        {/* YouTube Chapters Button */}
+        {onOpenChapters && (
+          <button
+            onClick={onOpenChapters}
+            style={{
+              ...buttonStyle,
+              gap: 5
+            }}
+            title="YouTube Video Chapters Generator"
+          >
+            <Clock size={14} color="#f59e0b" />
+            <span>Chapters</span>
+            {chaptersCount > 0 && (
+              <span
+                style={{
+                  backgroundColor: '#f59e0b',
+                  color: '#000',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: 10
+                }}
+              >
+                {chaptersCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Right: Recording Mode & Dev Inspector Controls */}

@@ -6,6 +6,7 @@ export interface CameraBookmark {
   zoom: number
   createdAt: string
   description?: string
+  obsSceneName?: string
 }
 
 export interface DocumentEntry {

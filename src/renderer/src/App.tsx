@@ -10,11 +10,21 @@ import {
   createBookmark,
   updateBookmarkCamera,
   renameBookmark,
+  updateBookmarkObsScene,
   deleteBookmark,
   reorderBookmarks,
   getNextBookmarkIndex,
   getPreviousBookmarkIndex
 } from '@core/bookmarks/bookmark-manager'
+import {
+  ChapterMarker,
+  addChapterMarker,
+  formatTimestamp
+} from '@core/recording/chapter-generator'
+import { obsClient, ObsConnectionStatus } from '@core/obs/obs-client'
+import { ObsScene } from '@core/obs/obs-types'
+import { ChaptersModal } from './components/recording/ChaptersModal'
+import { ObsModal } from './components/recording/ObsModal'
 import { SystemInfo } from '@core/desktop/desktop-api'
 import { ExcalidrawCanvasAdapter } from './components/canvas/ExcalidrawCanvasAdapter'
 import { CanvasView } from './components/canvas/CanvasView'
@@ -83,6 +93,23 @@ export const App: React.FC = () => {
   const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false)
   const [customExportBounds, setCustomExportBounds] = useState<Bounds | null>(null)
 
+  // YouTube Chapters & Recording Session state
+  const [chapters, setChapters] = useState<ChapterMarker[]>([
+    { id: 'chap_intro', title: 'Introduction & Architecture Overview', timestampSeconds: 0 }
+  ])
+  const [isChaptersModalOpen, setIsChaptersModalOpen] = useState(false)
+  const [isRecordingSession, setIsRecordingSession] = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
+
+  // OBS Studio WebSocket state
+  const [isObsModalOpen, setIsObsModalOpen] = useState(false)
+  const [obsStatus, setObsStatus] = useState<ObsConnectionStatus>(obsClient.getStatus())
+  const [obsScenes, setObsScenes] = useState<ObsScene[]>(obsClient.getScenes())
+  const [autoSwitchObsScene, setAutoSwitchObsScene] = useState(true)
+
+  // Chroma-key Background state
+  const [chromaMode, setChromaMode] = useState<'dark' | 'light' | 'green' | 'blue' | 'magenta'>('dark')
+
   // Notification Toast state
   const [toast, setToast] = useState<{
     id: number
@@ -100,6 +127,35 @@ export const App: React.FC = () => {
     },
     []
   )
+
+  // Recording session elapsed timer
+  useEffect(() => {
+    let interval: any
+    if (isRecordingSession) {
+      interval = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1)
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [isRecordingSession])
+
+  // OBS WebSocket event listeners
+  useEffect(() => {
+    const unsubStatus = obsClient.onStatusChange((newStatus) => {
+      setObsStatus(newStatus)
+    })
+    const unsubScene = obsClient.onSceneChange((_, scenes) => {
+      setObsScenes(scenes)
+    })
+    const unsubRecord = obsClient.onRecordStateChange((state) => {
+      setIsRecordingSession(state.outputActive)
+    })
+    return () => {
+      unsubStatus()
+      unsubScene()
+      unsubRecord()
+    }
+  }, [])
 
   // Listen to pointer events from adapter
   useEffect(() => {
@@ -283,8 +339,13 @@ export const App: React.FC = () => {
       const bm = bookmarks[index]
       setActiveBookmarkIndex(index)
       adapter.animateCameraTo({ x: bm.x, y: bm.y, zoom: bm.zoom }, 600)
+
+      // Auto-switch OBS Scene if bound
+      if (autoSwitchObsScene && bm.obsSceneName && obsStatus === 'connected') {
+        obsClient.setCurrentProgramScene(bm.obsSceneName).catch(console.error)
+      }
     },
-    [adapter, manifest.presentation.cameraBookmarks]
+    [adapter, autoSwitchObsScene, manifest.presentation.cameraBookmarks, obsStatus]
   )
 
   const handleNextBookmark = useCallback(() => {
@@ -361,6 +422,85 @@ export const App: React.FC = () => {
       if (prevIndex === fromIndex) return toIndex
       return prevIndex
     })
+  }, [])
+
+  const handleToggleRecordingSession = useCallback(async () => {
+    if (obsStatus === 'connected') {
+      try {
+        const active = await obsClient.toggleRecord()
+        setIsRecordingSession(active)
+        showToast(active ? 'OBS recording started' : 'OBS recording stopped', 'info')
+        if (active && recordingSeconds === 0) {
+          setRecordingSeconds(0)
+        }
+        return
+      } catch {
+        // Fallback to local session timer
+      }
+    }
+
+    setIsRecordingSession((prev) => {
+      const next = !prev
+      if (next) {
+        showToast('Recording session started', 'info')
+      } else {
+        showToast('Recording session paused/stopped', 'info')
+      }
+      return next
+    })
+  }, [obsStatus, recordingSeconds, showToast])
+
+  const handleAddChapterMarker = useCallback(() => {
+    const currentBookmark =
+      activeBookmarkIndex !== null && manifest.presentation.cameraBookmarks[activeBookmarkIndex]
+        ? manifest.presentation.cameraBookmarks[activeBookmarkIndex]
+        : null
+
+    const defaultTitle = currentBookmark ? currentBookmark.name : `Chapter ${chapters.length + 1}`
+    const updated = addChapterMarker(
+      chapters,
+      defaultTitle,
+      recordingSeconds,
+      currentBookmark?.id
+    )
+    setChapters(updated)
+    showToast(`Chapter stamped: "${defaultTitle}" at ${formatTimestamp(recordingSeconds)}`, 'success')
+  }, [activeBookmarkIndex, chapters, manifest.presentation.cameraBookmarks, recordingSeconds, showToast])
+
+  const handleSelectChroma = useCallback((mode: string) => {
+    const validModes: Record<string, string> = {
+      dark: '#121212',
+      light: '#ffffff',
+      green: '#00ff00',
+      blue: '#0000ff',
+      magenta: '#ff00ff'
+    }
+    const color = validModes[mode] || '#121212'
+    setChromaMode(mode as any)
+    adapter.setBackgroundColor(color)
+    showToast(`Canvas background set to ${mode}`, 'info')
+  }, [adapter, showToast])
+
+  const handleCycleChroma = useCallback(() => {
+    const modes: ('dark' | 'light' | 'green' | 'blue' | 'magenta')[] = [
+      'dark',
+      'light',
+      'green',
+      'blue',
+      'magenta'
+    ]
+    const nextIdx = (modes.indexOf(chromaMode) + 1) % modes.length
+    handleSelectChroma(modes[nextIdx])
+  }, [chromaMode, handleSelectChroma])
+
+  const handleUpdateBookmarkObsScene = useCallback((id: string, sceneName?: string) => {
+    setManifest((prev) => ({
+      ...prev,
+      presentation: {
+        ...prev.presentation,
+        cameraBookmarks: updateBookmarkObsScene(prev.presentation.cameraBookmarks, id, sceneName)
+      }
+    }))
   }, [])
 
   const handleImportImage = useCallback(async () => {
@@ -550,6 +690,10 @@ export const App: React.FC = () => {
         if (isMarqueeSelecting) {
           setIsMarqueeSelecting(false)
           setIsExportModalOpen(true)
+        } else if (isChaptersModalOpen) {
+          setIsChaptersModalOpen(false)
+        } else if (isObsModalOpen) {
+          setIsObsModalOpen(false)
         } else if (isExportModalOpen) {
           setIsExportModalOpen(false)
         } else if (isCodeModalOpen) {
@@ -566,6 +710,13 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'i') {
         e.preventDefault()
         setIsInspectorOpen((prev) => !prev)
+        return
+      }
+
+      // Alt+C: Add Chapter Marker
+      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault()
+        handleAddChapterMarker()
         return
       }
 
@@ -648,6 +799,12 @@ export const App: React.FC = () => {
         onImportImage={handleImportImage}
         onOpenExport={() => setIsExportModalOpen(true)}
         onToggleDevTools={handleToggleDevTools}
+        onOpenChapters={() => setIsChaptersModalOpen(true)}
+        chaptersCount={chapters.length}
+        onOpenObs={() => setIsObsModalOpen(true)}
+        obsStatus={obsStatus}
+        chromaMode={chromaMode}
+        onSelectChroma={handleSelectChroma}
       />
 
       {/* Architecture Icon Library Sidebar (hidden in recording mode) */}
@@ -700,6 +857,8 @@ export const App: React.FC = () => {
         onRenameBookmark={handleRenameBookmark}
         onDeleteBookmark={handleDeleteBookmark}
         onReorderBookmarks={handleReorderBookmarks}
+        obsScenes={obsScenes.map((s) => s.sceneName)}
+        onUpdateBookmarkObsScene={handleUpdateBookmarkObsScene}
       />
 
       {/* Presenter Tour Bar (floating HUD at bottom) */}
@@ -711,6 +870,38 @@ export const App: React.FC = () => {
         onNextBookmark={handleNextBookmark}
         onPreviousBookmark={handlePreviousBookmark}
         onToggleDrawer={() => setIsBookmarksDrawerOpen((prev) => !prev)}
+        recordingState={{
+          isRecording: isRecordingSession,
+          seconds: recordingSeconds,
+          chaptersCount: chapters.length
+        }}
+        onToggleRecording={handleToggleRecordingSession}
+        onAddChapterMarker={handleAddChapterMarker}
+        onOpenChapters={() => setIsChaptersModalOpen(true)}
+        obsStatus={obsStatus}
+        onOpenObs={() => setIsObsModalOpen(true)}
+        chromaMode={chromaMode}
+        onCycleChroma={handleCycleChroma}
+      />
+
+      {/* YouTube Video Chapters Modal */}
+      <ChaptersModal
+        isOpen={isChaptersModalOpen}
+        projectTitle={manifest.title}
+        chapters={chapters}
+        currentRecordingSeconds={recordingSeconds}
+        onClose={() => setIsChaptersModalOpen(false)}
+        onUpdateChapters={setChapters}
+        onToast={showToast}
+      />
+
+      {/* OBS Studio WebSocket Modal */}
+      <ObsModal
+        isOpen={isObsModalOpen}
+        onClose={() => setIsObsModalOpen(false)}
+        autoSwitchScene={autoSwitchObsScene}
+        onToggleAutoSwitchScene={setAutoSwitchObsScene}
+        onToast={showToast}
       />
 
       {/* Syntax-Highlighted Code Snippet Modal */}

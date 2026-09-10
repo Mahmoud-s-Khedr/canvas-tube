@@ -10,8 +10,8 @@ This document outlines the phased development roadmap for **CanvasTube**, transf
 Phase 0 ────► Phase 1 ────► Phase 2 ────► Phase 3 ────► Phase 4
 Setup &       Infinite      Architecture  Document &    Video Recording
 Foundation    Canvas &      Stencils &    PDF Workflow  & Production Export
-              Stylus        Bookmarks                   [IN PROGRESS - 50%]
-[COMPLETED]   [COMPLETED]   [COMPLETED]   [COMPLETED]   
+              Stylus        Bookmarks                   
+[COMPLETED]   [COMPLETED]   [COMPLETED]   [COMPLETED]   [COMPLETED]
 ```
 
 ---
@@ -58,12 +58,12 @@ Foundation    Canvas &      Stencils &    PDF Workflow  & Production Export
 - [x] Multi-resolution Windows application icon (`build/icon.ico`).
 
 ### 3. Camera Bookmarks & Scene Tour (Completed)
-- [x] **Saved Camera Viewpoints**: `CameraBookmark` data model (`id`, `name`, `x`, `y`, `zoom`, `description`, `createdAt`) stored in `manifest.presentation.cameraBookmarks`.
+- [x] **Saved Camera Viewpoints**: `CameraBookmark` data model (`id`, `name`, `x`, `y`, `zoom`, `description`, `createdAt`, `obsSceneName`) stored in `manifest.presentation.cameraBookmarks`.
 - [x] **Smooth Easing Engine**: Cubic ease-in-out interpolation (`camera-animation.ts`) smoothly translating camera coordinates and zoom.
 - [x] **Interaction Interruption**: Canvas pointer and stylus touches immediately yield control back to the user by stopping in-flight transitions.
-- [x] **Bookmarks Drawer**: Slide-out panel for renaming, deleting, reordering, updating camera coordinates, and quick jumping.
-- [x] **Floating Presenter Tour Bar**: Bottom HUD displaying step progression chips, direct jump picker popover, and previous/next controls during lectures and Clean Recording Mode (`F10`).
-- [x] **Keyboard Navigation**: `Ctrl+B` to capture current view, `PageDown`/`PageUp` to step forward and backward, `Alt+[1-9]` for direct jumps.
+- [x] **Bookmarks Drawer**: Slide-out panel for renaming, deleting, reordering, updating camera coordinates, OBS scene binding, and quick jumping.
+- [x] **Floating Presenter Tour Bar**: Bottom HUD displaying step progression chips, direct jump picker popover, recording timer & chapter markers, and previous/next controls during lectures and Clean Recording Mode (`F10`).
+- [x] **Keyboard Navigation**: `Ctrl+B` to capture current view, `PageDown`/`PageUp` to step forward and backward, `Alt+[1-9]` for direct jumps, `Alt+C` for instant chapter stamping.
 
 ---
 
@@ -86,11 +86,13 @@ Foundation    Canvas &      Stencils &    PDF Workflow  & Production Export
 
 ---
 
-## Phase 4: Recording, Streaming & Production Integration (In Progress)
+## Phase 4: Recording, Streaming & Production Integration (Completed)
 
-### 1. OBS Studio Integration
-- [ ] Local WebSocket bridge or hotkey hook allowing OBS to synchronize scene switching with CanvasTube camera bookmarks.
-- [ ] Virtual green-screen or transparent canvas background toggle.
+### 1. OBS Studio Integration (Completed)
+- [x] **WebSocket v5 Protocol Engine**: Native, event-driven `ObsWebSocketClient` supporting RPC requests, server-initiated Hello handshake, double SHA-256 base64 auth challenge hashing, and auto-reconnection.
+- [x] **Bookmark Scene Binding**: Ability to bind any camera viewpoint to an OBS program scene (e.g. "Speaker + Diagram", "Full Diagram 4K", "Code Cam") with automated switching upon navigation.
+- [x] **OBS Studio Control Modal**: Dialog (`ObsModal.tsx`) providing connection configuration, live status badge, instant scene switcher, remote recording start/stop/toggle, and auto-switch preferences.
+- [x] **Chroma-Key Background Mode**: Zero-latency backdrop selector (Dark `#121212`, Light `#ffffff`, Chroma Green `#00ff00`, Chroma Blue `#0000ff`, Chroma Magenta `#ff00ff`) enabling instant OBS Color Key filter setup.
 
 ### 2. Production Export Pipeline (Completed)
 - [x] **High-Resolution PNG Rasterizer**: Render active canvas or selected elements at 1x, 2x, 3x, 4x, 4K UHD (3840px), and 8K FUHD (7680px) with background transparency and theme options.
@@ -99,11 +101,17 @@ Foundation    Canvas &      Stencils &    PDF Workflow  & Production Export
 - [x] **Quick Clipboard Copy**: Global keyboard shortcut (`Ctrl+Shift+C`) to copy selected elements or viewport straight to system clipboard as high-res PNG via native Electron clipboard IPC (Wayland, X11, and Windows).
 - [x] **Export UI Modal**: Modern dialog (`ExportModal.tsx`) with live thumbnail rendering, format/scope/resolution toggles, and atomic file saving.
 
-### 3. Video Cut-Points & Chapters
-- [ ] Automated timestamp marker export (`chapters.txt`) corresponding to camera bookmark transitions during recording sessions for YouTube description upload.
+### 3. Video Cut-Points & YouTube Chapters (Completed)
+- [x] **Automated Chapter Generator**: Pure functions (`chapter-generator.ts`) enforcing YouTube's strict chapter specification (first chapter at `00:00`, minimum 3 chapters, 10s gap, `MM:SS` / `HH:MM:SS` timestamps).
+- [x] **Interactive Chapters Manager**: `ChaptersModal.tsx` displaying real-time YouTube validation status, dynamic chapter CRUD, and one-click copy to clipboard or native `chapters.txt` file export.
+- [x] **Live Session Recording & Stamping**: Real-time timer HUD in `PresenterTourBar` with quick `+ Chapter` button and `Alt+C` hotkey to log timestamps synced to lecture progression.
 
-### 4. Connector & Arrow Enhancements
-- [ ] Smart orthogonal routing around architecture boxes (drawing inspiration from Draw.io / wire routers).
+---
+
+## Phase 5: Connectors & Advanced Diagramming (Next)
+
+### 1. Smart Orthogonal Connectors
+- [ ] Smart orthogonal routing around architecture boxes (wire routers).
 - [ ] Bidirectional and labeled data-flow arrows with protocol tags (e.g. `gRPC`, `HTTPS`, `Kafka Topic`).
 - [ ] Magnetic snap-to-anchor points on architecture stencils.
 

@@ -408,6 +408,20 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     })
   }
 
+  public getBackgroundColor(): string {
+    if (!this.api) return '#121212'
+    return this.api.getAppState().viewBackgroundColor || '#121212'
+  }
+
+  public setBackgroundColor(color: string): void {
+    if (!this.api) return
+    this.api.updateScene({
+      appState: {
+        viewBackgroundColor: color
+      }
+    })
+  }
+
   public addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void {
     if (!this.api) return
     this.api.addFiles([file as any])

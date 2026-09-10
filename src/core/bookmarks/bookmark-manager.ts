@@ -8,7 +8,8 @@ export function createBookmark(
   camera: CameraState,
   name?: string,
   description?: string,
-  index = 0
+  index = 0,
+  obsSceneName?: string
 ): CameraBookmark {
   const randomSuffix = Math.random().toString(36).substring(2, 8)
   const defaultName = name && name.trim().length > 0 ? name.trim() : `Bookmark ${index + 1}`
@@ -20,7 +21,8 @@ export function createBookmark(
     y: Math.round(camera.y),
     zoom: Math.round(camera.zoom * 1000) / 1000,
     createdAt: new Date().toISOString(),
-    ...(description !== undefined && { description })
+    ...(description !== undefined && { description }),
+    ...(obsSceneName && obsSceneName.trim().length > 0 && { obsSceneName: obsSceneName.trim() })
   }
 }
 
@@ -59,6 +61,26 @@ export function renameBookmark(
       name: name.trim() || bm.name,
       ...(description !== undefined && { description })
     }
+  })
+}
+
+/**
+ * Updates the OBS scene name associated with a bookmark.
+ */
+export function updateBookmarkObsScene(
+  bookmarks: CameraBookmark[],
+  id: string,
+  obsSceneName?: string
+): CameraBookmark[] {
+  return bookmarks.map((bm) => {
+    if (bm.id !== id) return bm
+    const updated = { ...bm }
+    if (obsSceneName && obsSceneName.trim().length > 0) {
+      updated.obsSceneName = obsSceneName.trim()
+    } else {
+      delete updated.obsSceneName
+    }
+    return updated
   })
 }
 

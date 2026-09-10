@@ -9,7 +9,8 @@ import {
   Trash2,
   Crosshair,
   X,
-  Play
+  Play,
+  Tv
 } from 'lucide-react'
 import { CameraBookmark } from '@core/project/project-manifest'
 
@@ -26,6 +27,8 @@ interface BookmarksDrawerProps {
   onRenameBookmark: (id: string, name: string) => void
   onDeleteBookmark: (id: string) => void
   onReorderBookmarks: (fromIndex: number, toIndex: number) => void
+  obsScenes?: string[]
+  onUpdateBookmarkObsScene?: (id: string, obsSceneName?: string) => void
 }
 
 export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
@@ -40,7 +43,9 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
   onUpdateBookmarkCamera,
   onRenameBookmark,
   onDeleteBookmark,
-  onReorderBookmarks
+  onReorderBookmarks,
+  obsScenes = [],
+  onUpdateBookmarkObsScene
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState<string>('')
@@ -385,6 +390,34 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                     Pos: ({bm.x}, {bm.y})
                   </span>
                 </div>
+
+                {/* OBS Scene Binding */}
+                {obsScenes.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                    <Tv size={12} color="#9ca3af" />
+                    <select
+                      value={bm.obsSceneName || ''}
+                      onChange={(e) => onUpdateBookmarkObsScene?.(bm.id, e.target.value || undefined)}
+                      style={{
+                        backgroundColor: '#18181b',
+                        border: '1px solid #3f3f46',
+                        color: bm.obsSceneName ? '#60a5fa' : '#9ca3af',
+                        borderRadius: 4,
+                        fontSize: 11,
+                        padding: '2px 4px',
+                        outline: 'none',
+                        flex: 1
+                      }}
+                    >
+                      <option value="">No OBS Scene Link</option>
+                      {obsScenes.map((s) => (
+                        <option key={s} value={s}>
+                          OBS: {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Actions Row */}
                 <div
