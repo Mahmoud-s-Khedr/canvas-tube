@@ -1,4 +1,4 @@
-import { CanvasProjectBundle, AssetEntry } from '../project/project-manifest'
+import { CanvasProjectBundle, AssetEntry, DocumentEntry } from '../project/project-manifest'
 
 export interface SaveProjectResult {
   success: boolean
@@ -16,6 +16,12 @@ export interface ImportAssetResult {
   dataUrl: string
 }
 
+export interface ImportPdfResult {
+  asset: AssetEntry
+  document: DocumentEntry
+  pdfBase64: string
+}
+
 export interface SystemInfo {
   platform: string
   arch: string
@@ -30,6 +36,8 @@ export interface DesktopApi {
   saveProject(projectDir: string, bundle: CanvasProjectBundle): Promise<SaveProjectResult>
   saveProjectAs(defaultTitle: string, bundle: CanvasProjectBundle): Promise<SaveProjectResult | null>
   importAsset(): Promise<ImportAssetResult | null>
+  importPdf(): Promise<ImportPdfResult | null>
+  readDocumentFile(projectDir: string, relativePath: string): Promise<string | null>
   selectDirectory(): Promise<string | null>
   getSystemInfo(): Promise<SystemInfo>
   toggleDevTools(): Promise<void>

@@ -154,6 +154,38 @@ function setupIpcHandlers(): void {
       return null
     }
   })
+
+  ipcMain.handle('pdf:import', async () => {
+    if (!mainWindow) return null
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import PDF Document or Slide Deck',
+      filters: [
+        { name: 'PDF Documents', extensions: ['pdf'] }
+      ],
+      properties: ['openFile']
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    try {
+      return await ProjectService.readPdfFile(result.filePaths[0])
+    } catch (err) {
+      dialog.showErrorBox('Import PDF Failed', err instanceof Error ? err.message : 'Unknown error')
+      return null
+    }
+  })
+
+  ipcMain.handle('pdf:readDocument', async (_event, args: { projectDir: string; relativePath: string }) => {
+    if (!args || !args.projectDir || !args.relativePath) return null
+    try {
+      return await ProjectService.readDocumentFile(args.projectDir, args.relativePath)
+    } catch (err) {
+      console.error('[pdf:readDocument] Failed:', err)
+      return null
+    }
+  })
 }
 
 // App lifecycle

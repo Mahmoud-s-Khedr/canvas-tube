@@ -5,7 +5,8 @@ import {
   CanvasProjectBundle,
   serializeProjectBundle,
   deserializeProjectBundle,
-  AssetEntry
+  AssetEntry,
+  DocumentEntry
 } from '../../core/project/project-manifest'
 
 export class ProjectService {
@@ -90,6 +91,58 @@ export class ProjectService {
     }
 
     return { asset, dataUrl }
+  }
+
+  public static async readPdfFile(filePath: string): Promise<{
+    asset: AssetEntry
+    document: DocumentEntry
+    pdfBase64: string
+  }> {
+    const buffer = await fs.readFile(filePath)
+    const hash = crypto.createHash('sha256').update(buffer).digest('hex')
+    const filename = path.basename(filePath)
+    const pdfBase64 = buffer.toString('base64')
+
+    const assetId = `ast_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    const docId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+
+    const asset: AssetEntry = {
+      id: assetId,
+      type: 'pdf',
+      originalFilename: filename,
+      mimeType: 'application/pdf',
+      hash,
+      relativePath: `documents/${hash}.pdf`,
+      sizeBytes: buffer.byteLength,
+      createdAt: new Date().toISOString()
+    }
+
+    const document: DocumentEntry = {
+      id: docId,
+      assetId,
+      filename,
+      pageCount: 0,
+      type: 'pdf'
+    }
+
+    return { asset, document, pdfBase64 }
+  }
+
+  public static async readDocumentFile(projectDir: string, relativePath: string): Promise<string | null> {
+    try {
+      const fullPath = path.join(projectDir, relativePath)
+      const buffer = await fs.readFile(fullPath)
+      return buffer.toString('base64')
+    } catch (err) {
+      console.error(`[ProjectService] Failed to read document file ${relativePath}:`, err)
+      return null
+    }
+  }
+
+  public static async writeDocumentFile(projectDir: string, relativePath: string, buffer: Buffer): Promise<void> {
+    const fullPath = path.join(projectDir, relativePath)
+    await fs.mkdir(path.dirname(fullPath), { recursive: true })
+    await fs.writeFile(fullPath, buffer)
   }
 
   private static getMimeType(ext: string): string {

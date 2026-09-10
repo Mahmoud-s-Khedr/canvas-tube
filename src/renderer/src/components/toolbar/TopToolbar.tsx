@@ -4,6 +4,8 @@ import {
   Save,
   FilePlus,
   Image as ImageIcon,
+  FileText,
+  Terminal,
   Activity,
   Video,
   Minimize2,
@@ -15,13 +17,18 @@ interface TopToolbarProps {
   projectDir: string | null
   isRecordingMode: boolean
   isInspectorOpen: boolean
+  hasDocument: boolean
+  isDocumentDockOpen: boolean
   onToggleRecordingMode: () => void
   onToggleInspector: () => void
+  onToggleDocumentDock: () => void
   onNewProject: () => void
   onOpenProject: () => void
   onSaveProject: () => void
   onSaveProjectAs: () => void
   onImportImage: () => void
+  onImportPdf: () => void
+  onOpenCodeSnippetModal: () => void
   onToggleDevTools: () => void
 }
 
@@ -30,13 +37,18 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   projectDir,
   isRecordingMode,
   isInspectorOpen,
+  hasDocument,
+  isDocumentDockOpen,
   onToggleRecordingMode,
   onToggleInspector,
+  onToggleDocumentDock,
   onNewProject,
   onOpenProject,
   onSaveProject,
   onSaveProjectAs,
   onImportImage,
+  onImportPdf,
+  onOpenCodeSnippetModal,
   onToggleDevTools
 }) => {
   if (isRecordingMode) {
@@ -155,7 +167,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         </div>
       </div>
 
-      {/* Center: File & Project Actions */}
+      {/* Center: File, Assets, PDF & Code Snippet Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <button
           onClick={onNewProject}
@@ -200,8 +212,42 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
           title="Import Image Asset onto Canvas"
         >
           <ImageIcon size={15} color="#38bdf8" />
-          <span>Import Image</span>
+          <span>Image</span>
         </button>
+
+        <button
+          onClick={onImportPdf}
+          style={buttonStyle}
+          title="Import PDF Document or Presentation Slides"
+        >
+          <FileText size={15} color="#ef4444" />
+          <span>PDF / Slides</span>
+        </button>
+
+        <button
+          onClick={onOpenCodeSnippetModal}
+          style={buttonStyle}
+          title="Insert Syntax-Highlighted Code Card"
+        >
+          <Terminal size={15} color="#10b981" />
+          <span>Code Card</span>
+        </button>
+
+        {hasDocument && (
+          <button
+            onClick={onToggleDocumentDock}
+            style={{
+              ...buttonStyle,
+              backgroundColor: isDocumentDockOpen ? '#450a0a' : '#27272a',
+              border: `1px solid ${isDocumentDockOpen ? '#ef4444' : '#3f3f46'}`,
+              color: isDocumentDockOpen ? '#fca5a5' : '#e4e4e7'
+            }}
+            title="Toggle Document Slide Strip Dock"
+          >
+            <FileText size={14} color="#ef4444" />
+            <span>Slide Dock</span>
+          </button>
+        )}
       </div>
 
       {/* Right: Recording Mode & Dev Inspector Controls */}

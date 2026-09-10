@@ -32,9 +32,9 @@
 | **Phase 0** | **Foundation, Toolchain & Core Abstractions** | `[x]` Completed | Sprint 1 | 100% |
 | **Phase 1** | **Infinite Canvas & Stylus Input Slice** | `[x]` Completed | Sprint 1 | 100% |
 | **Phase 2** | **Technical Stencils & Camera Bookmarks** | `[/]` In Progress | Sprint 2 | 75% |
-| **Phase 3** | **PDF Annotation & Technical Documents** | `[ ]` Planned | Sprint 3 | 0% |
-| **Phase 4** | **Recording, OBS Studio & Production Export** | `[ ]` Planned | Sprint 4 | 0% |
-| **Phase 5** | **Packaging, Hardening & Multi-Platform CI** | `[/]` In Progress | Sprint 5 | 75% |
+| **Phase 3** | **PDF Annotation & Technical Documents** | `[x]` Completed | Sprint 4 | 90% |
+| **Phase 4** | **Recording, OBS Studio & Production Export** | `[ ]` Planned | Sprint 5 | 0% |
+| **Phase 5** | **Packaging, Hardening & Multi-Platform CI** | `[/]` In Progress | Sprint 2/5 | 75% |
 
 ---
 
@@ -77,7 +77,7 @@
   - [x] Detect and display live `pointerType` (`pen`, `mouse`, `touch`), continuous `pressure` (0.0 to 1.0), `tiltX`, `tiltY`, `twist`, `buttons`, and canvas coordinates.
   - [x] Add green badge detection specifically for XP-Pen / stylus input devices.
 - [x] **Desktop Application Shell & Toolbars**
-  - [x] Implement [`TopToolbar`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/toolbar/TopToolbar.tsx) with New, Open, Save, Save As, and DevTools controls.
+  - [x] Implement [`TopToolbar`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/toolbar/TopToolbar.tsx) with New, Open, Save, Save As, DevTools, PDF and Code snippet controls.
   - [x] Implement Image Asset Import with native dialog and SHA-256 hashing.
   - [x] Implement Clean Recording Mode toggle (`F10` / `Ctrl+Shift+R`) collapsing chrome for OBS capture.
   - [x] Implement collapsible [`IconSidebar`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/sidebar/IconSidebar.tsx) with live search and provider categories.
@@ -104,7 +104,7 @@
   - [ ] Custom user stencil import (drag SVG folder to add custom icon pack).
 - [ ] **Camera Bookmarks & Presenter Tour Mode**
   - [ ] Camera Bookmark data model (`id`, `title`, `bounds`, `zoom`, `orderIndex`).
-  - [ ] \"Add Camera Bookmark\" button in toolbar / shortcut (`Ctrl+B`).
+  - [ ] "Add Camera Bookmark" button in toolbar / shortcut (`Ctrl+B`).
   - [ ] Slide-out Bookmarks Drawer showing visual thumbnail previews of saved viewpoints.
   - [ ] Smooth animated camera panning transitions between bookmarks (`PageDown` / `PageUp`, `Alt + [1-9]`).
   - [ ] Presenter timeline bar indicating current step in a video explanation.
@@ -118,17 +118,20 @@
 ### Phase 3: Technical Document & PDF Annotation Integration
 *Goal: Pinned PDF presentation slides and research papers with layered handwritten stylus annotations.*
 
-- [ ] **Offline PDF Processing Engine**
-  - [ ] Integrate `pdfjs-dist` in an offline worker process (no external telemetry).
-  - [ ] PDF document import action placing files into `documents/` bundle subdirectory.
-  - [ ] Multi-page slide-strip dock for jumping across presentation slides.
-- [ ] **Canvas-Pinned Slides & Freehand Inking**
-  - [ ] Pinning PDF slides or research papers onto the infinite canvas as locked reference frames.
-  - [ ] Freehand stylus annotation layered over PDF pages without raster degradation.
-  - [ ] Export annotated PDF preserving both source document and handwritten vector ink.
-- [ ] **Code Snippet Embedding**
-  - [ ] Syntax-highlighted code block shape (using Shiki / offline Monaco).
-  - [ ] Callout badges and line-pointer anchors for code walkthroughs.
+- [x] **Offline PDF Processing Engine**
+  - [x] Integrate `pdfjs-dist` in an offline worker process (no external telemetry, zero CDN requests, bundled worker in `src/renderer/public/pdf.worker.min.mjs`).
+  - [x] PDF document import action placing files into `documents/` bundle subdirectory with SHA-256 integrity hashing.
+  - [x] Multi-page slide-strip dock ([`DocumentSlideDock`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/documents/DocumentSlideDock.tsx)) for browsing, selecting, and jumping across presentation slides.
+- [x] **Canvas-Pinned Slides & Freehand Inking**
+  - [x] Pinning PDF slides or research papers onto the infinite canvas as auto-locked reference frames (`locked: true`).
+  - [x] Drag-and-drop slide pages directly from slide dock onto exact canvas scene coordinates.
+  - [x] Freehand stylus vector annotation layered directly over PDF pages without raster degradation.
+  - [x] Bulk insertion actions (horizontal flow and vertical sequence layout).
+  - [ ] Export annotated PDF combining original documents with vector ink annotations.
+- [x] **Code Snippet Embedding**
+  - [x] Syntax-highlighted code card generator ([`CodeCardGenerator`](file:///home/mk/Projects/CV_projects/canvas-tube/src/core/code/code-card-generator.ts)) supporting TypeScript, Python, Go, Rust, Java, C/C++, SQL, Bash, JSON, YAML, Dockerfile.
+  - [x] Modern IDE window chrome (macOS window controls, filename header, line numbers gutter, Dark/Dracula/GitHub Dark themes).
+  - [x] Live vector card preview modal ([`CodeSnippetModal`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/code/CodeSnippetModal.tsx)) & placement onto canvas for code walkthroughs.
 
 ---
 
@@ -143,7 +146,7 @@
   - [ ] 4K / 8K ultra-high-resolution PNG rasterizer.
   - [ ] Vector SVG export with embedded fonts and embedded images.
   - [ ] Bounded region export (select rectangle and export image).
-  - [ ] \"Copy to Clipboard as PNG\" shortcut (`Ctrl+Shift+C`).
+  - [ ] "Copy to Clipboard as PNG" shortcut (`Ctrl+Shift+C`).
 - [ ] **YouTube Video Chapter Generation**
   - [ ] Session timer tracking time spent per Camera Bookmark during recording.
   - [ ] One-click export of `chapters.txt` formatted for YouTube video descriptions (e.g. `00:00 - Introduction`, `03:45 - Cache Invalidation`).
@@ -182,7 +185,7 @@
 ```
 Sprint 1 (Weeks 1-2): Phase 0 & Phase 1 Vertical Slice ─────► [COMPLETED]
 Sprint 2 (Weeks 3-4): Official Stencils & Windows/Linux CI ─► [COMPLETED]
-Sprint 3 (Weeks 5-6): Camera Bookmarks & Scene Tour ────────► [CURRENT]
-Sprint 4 (Weeks 7-8): PDF Slide Inking & Annotation ────────► [UPCOMING]
+Sprint 3 (Weeks 5-6): Camera Bookmarks & Scene Tour ────────► [IN PROGRESS]
+Sprint 4 (Weeks 7-8): PDF Slide Inking & Code Cards ────────► [COMPLETED]
 Sprint 5 (Weeks 9-10): OBS Integration & Production Polish ─► [UPCOMING]
 ```

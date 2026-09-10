@@ -9,12 +9,14 @@ interface CanvasViewProps {
   adapter: ExcalidrawCanvasAdapter
   isRecordingMode: boolean
   isSidebarOpen: boolean
+  onDropPdfPage?: (pageNumber: number, sceneX: number, sceneY: number) => void
 }
 
 export const CanvasView: React.FC<CanvasViewProps> = ({
   adapter,
   isRecordingMode,
-  isSidebarOpen
+  isSidebarOpen,
+  onDropPdfPage
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -37,7 +39,20 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
     if (!rawData) return
 
     try {
-      const icon = JSON.parse(rawData) as IconDefinition
+      const data = JSON.parse(rawData)
+
+      // 1. Check if dropped item is a PDF slide page
+      if (data?.type === 'pdf-page' && data.pageNumber) {
+        e.preventDefault()
+        const scenePoint = adapter.screenToScene(e.clientX, e.clientY)
+        if (onDropPdfPage) {
+          onDropPdfPage(data.pageNumber, scenePoint.x, scenePoint.y)
+        }
+        return
+      }
+
+      // 2. Check if dropped item is an architecture icon stencil
+      const icon = data as IconDefinition
       if (!icon || !icon.id || !icon.svgContent) return
 
       e.preventDefault()
@@ -70,7 +85,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
         }
       })
     } catch (err) {
-      console.error('[CanvasView] Failed to process dropped stencil:', err)
+      console.error('[CanvasView] Failed to process dropped item:', err)
     }
   }
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 import {
   ProjectManifest,
+  DocumentEntry,
   createDefaultManifest
 } from '@core/project/project-manifest'
 import { CanvasPointerSnapshot } from '@core/canvas/canvas-adapter'
@@ -10,6 +12,9 @@ import { CanvasView } from './components/canvas/CanvasView'
 import { TopToolbar } from './components/toolbar/TopToolbar'
 import { IconSidebar } from './components/sidebar/IconSidebar'
 import { InputInspector } from './components/inspector/InputInspector'
+import { DocumentSlideDock } from './components/documents/DocumentSlideDock'
+import { CodeSnippetModal } from './components/code/CodeSnippetModal'
+import { PdfService } from './services/pdf-service'
 
 export const App: React.FC = () => {
   const adapter = useMemo(() => new ExcalidrawCanvasAdapter(), [])
@@ -22,6 +27,14 @@ export const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [pointerSnapshot, setPointerSnapshot] = useState<CanvasPointerSnapshot | null>(null)
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null)
+
+  // Document (PDF) state
+  const [activeDocument, setActiveDocument] = useState<DocumentEntry | null>(null)
+  const [activePdfDoc, setActivePdfDoc] = useState<PDFDocumentProxy | null>(null)
+  const [isDocumentDockOpen, setIsDocumentDockOpen] = useState(false)
+
+  // Code Snippet Modal state
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false)
 
   // Listen to pointer events from adapter
   useEffect(() => {
@@ -48,6 +61,9 @@ export const App: React.FC = () => {
     const fresh = createDefaultManifest('New Architecture Canvas')
     setManifest(fresh)
     setProjectDir(null)
+    setActiveDocument(null)
+    setActivePdfDoc(null)
+    setIsDocumentDockOpen(false)
     adapter.deserialize({ elements: [], appState: {} })
   }, [adapter])
 
@@ -58,6 +74,29 @@ export const App: React.FC = () => {
       setProjectDir(result.projectDir)
       setManifest(result.bundle.manifest)
       adapter.deserialize(result.bundle.sceneData)
+
+      // Restore PDF document if present in opened project
+      if (result.bundle.manifest.documents.length > 0) {
+        const firstDoc = result.bundle.manifest.documents[0]
+        const asset = result.bundle.manifest.assets[firstDoc.assetId]
+        if (asset && window.desktopApi.readDocumentFile) {
+          try {
+            const base64 = await window.desktopApi.readDocumentFile(result.projectDir, asset.relativePath)
+            if (base64) {
+              const pdfDoc = await PdfService.loadPdfFromBase64(base64, firstDoc.id)
+              setActivePdfDoc(pdfDoc)
+              setActiveDocument(firstDoc)
+              setIsDocumentDockOpen(true)
+            }
+          } catch (err) {
+            console.error('[App] Failed to reload project document:', err)
+          }
+        }
+      } else {
+        setActiveDocument(null)
+        setActivePdfDoc(null)
+        setIsDocumentDockOpen(false)
+      }
     }
   }, [adapter])
 
@@ -140,6 +179,77 @@ export const App: React.FC = () => {
     })
   }, [adapter])
 
+  // PDF import handler
+  const handleImportPdf = useCallback(async () => {
+    if (!window.desktopApi?.importPdf) return
+    const result = await window.desktopApi.importPdf()
+    if (!result) return
+
+    try {
+      const pdfDoc = await PdfService.loadPdfFromBase64(result.pdfBase64, result.document.id)
+      const updatedDoc: DocumentEntry = {
+        ...result.document,
+        pageCount: pdfDoc.numPages
+      }
+
+      setManifest((prev) => ({
+        ...prev,
+        documents: [...prev.documents, updatedDoc],
+        assets: {
+          ...prev.assets,
+          [result.asset.id]: result.asset
+        }
+      }))
+
+      setActiveDocument(updatedDoc)
+      setActivePdfDoc(pdfDoc)
+      setIsDocumentDockOpen(true)
+    } catch (err) {
+      console.error('[App] Failed to load imported PDF:', err)
+      alert('Failed to parse and load PDF document.')
+    }
+  }, [])
+
+  // Drag-and-drop handler for dropped PDF slide pages
+  const handleDropPdfPage = useCallback(
+    async (pageNumber: number, sceneX: number, sceneY: number) => {
+      if (!activePdfDoc || !adapter) return
+
+      try {
+        const rendered = await PdfService.renderPage(activePdfDoc, pageNumber, 2.0)
+        const targetWidth = 800
+        const targetHeight = Math.round(targetWidth / rendered.aspectRatio)
+
+        const fileId = `pdf_page_${activeDocument?.id || 'doc'}_p${pageNumber}_${Date.now()}`
+
+        adapter.addFile({
+          id: fileId,
+          mimeType: 'image/png',
+          dataURL: rendered.dataUrl,
+          created: Date.now()
+        })
+
+        adapter.addObject({
+          type: 'image',
+          x: Math.round(sceneX - targetWidth / 2),
+          y: Math.round(sceneY - targetHeight / 2),
+          width: targetWidth,
+          height: targetHeight,
+          fileId,
+          locked: true,
+          customData: {
+            type: 'pdf-slide',
+            docId: activeDocument?.id,
+            pageNumber
+          }
+        })
+      } catch (err) {
+        console.error('[App] Failed placing dropped slide page:', err)
+      }
+    },
+    [activePdfDoc, activeDocument, adapter]
+  )
+
   const handleToggleDevTools = useCallback(() => {
     window.desktopApi?.toggleDevTools()
   }, [])
@@ -171,9 +281,13 @@ export const App: React.FC = () => {
         e.preventDefault()
         setIsRecordingMode((prev) => !prev)
       }
-      // Escape: Exit recording mode if active
-      if (e.key === 'Escape' && isRecordingMode) {
-        setIsRecordingMode(false)
+      // Escape: Exit recording mode or close modal if active
+      if (e.key === 'Escape') {
+        if (isCodeModalOpen) {
+          setIsCodeModalOpen(false)
+        } else if (isRecordingMode) {
+          setIsRecordingMode(false)
+        }
       }
       // Ctrl+Shift+I: Toggle Stylus Inspector
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'i') {
@@ -189,7 +303,8 @@ export const App: React.FC = () => {
     handleSaveProjectAs,
     handleOpenProject,
     handleNewProject,
-    isRecordingMode
+    isRecordingMode,
+    isCodeModalOpen
   ])
 
   return (
@@ -208,13 +323,18 @@ export const App: React.FC = () => {
         projectDir={projectDir}
         isRecordingMode={isRecordingMode}
         isInspectorOpen={isInspectorOpen}
+        hasDocument={Boolean(activeDocument)}
+        isDocumentDockOpen={isDocumentDockOpen}
         onToggleRecordingMode={() => setIsRecordingMode((prev) => !prev)}
         onToggleInspector={() => setIsInspectorOpen((prev) => !prev)}
+        onToggleDocumentDock={() => setIsDocumentDockOpen((prev) => !prev)}
         onNewProject={handleNewProject}
         onOpenProject={handleOpenProject}
         onSaveProject={handleSaveProject}
         onSaveProjectAs={handleSaveProjectAs}
         onImportImage={handleImportImage}
+        onImportPdf={handleImportPdf}
+        onOpenCodeSnippetModal={() => setIsCodeModalOpen(true)}
         onToggleDevTools={handleToggleDevTools}
       />
 
@@ -232,6 +352,25 @@ export const App: React.FC = () => {
         adapter={adapter}
         isRecordingMode={isRecordingMode}
         isSidebarOpen={isSidebarOpen}
+        onDropPdfPage={handleDropPdfPage}
+      />
+
+      {/* Slide-Strip Dock for Loaded PDF Documents (hidden in recording mode) */}
+      {!isRecordingMode && (
+        <DocumentSlideDock
+          documentEntry={activeDocument}
+          pdfDoc={activePdfDoc}
+          adapter={adapter}
+          isOpen={isDocumentDockOpen}
+          onClose={() => setIsDocumentDockOpen(false)}
+        />
+      )}
+
+      {/* Syntax-Highlighted Code Snippet Modal */}
+      <CodeSnippetModal
+        adapter={adapter}
+        isOpen={isCodeModalOpen}
+        onClose={() => setIsCodeModalOpen(false)}
       />
 
       {/* Developer Input / Stylus Inspector */}

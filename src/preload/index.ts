@@ -4,6 +4,7 @@ import {
   OpenProjectResult,
   SaveProjectResult,
   ImportAssetResult,
+  ImportPdfResult,
   SystemInfo
 } from '../core/desktop/desktop-api'
 import { CanvasProjectBundle } from '../core/project/project-manifest'
@@ -23,6 +24,14 @@ const desktopApi: DesktopApi = {
 
   async importAsset(): Promise<ImportAssetResult | null> {
     return ipcRenderer.invoke('asset:import')
+  },
+
+  async importPdf(): Promise<ImportPdfResult | null> {
+    return ipcRenderer.invoke('pdf:import')
+  },
+
+  async readDocumentFile(projectDir: string, relativePath: string): Promise<string | null> {
+    return ipcRenderer.invoke('pdf:readDocument', { projectDir, relativePath })
   },
 
   async selectDirectory(): Promise<string | null> {
