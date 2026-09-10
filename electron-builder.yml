@@ -35,7 +35,6 @@ win:
     - target: dir
       arch:
         - x64
-  category: Graphics
 nsis:
   oneClick: false
   perMachine: false
