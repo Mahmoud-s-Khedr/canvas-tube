@@ -6,10 +6,14 @@ CanvasTube draws architectural inspiration from several outstanding open-source 
 
 ## 1. Reference Summary Table
 
-| Tool | License | Role in CanvasTube | Key Lessons & Inspirations |
+| Tool / Resource | License / Terms | Role in CanvasTube | Key Lessons & Inspirations |
 |---|---|---|---|
 | **Excalidraw** | **MIT** | **Core Canvas Engine (via Adapter)** | Infinite canvas, hand-drawn vector aesthetics, simple JSON schema, offline-friendly |
 | **draw.io / diagrams.net** | **Apache-2.0** | **Architectural Reference (Stencils & Routing)** | Stencil taxonomy (AWS, GCP, K8s), connector routing, offline desktop packaging |
+| **Kubernetes Community** | **Apache-2.0 / CC-BY-4.0** | **Official Stencils Source** | Canonical Kubernetes resource and component icons (`kubernetes/community/icons`) |
+| **AWS Architecture Icons** | **AWS Asset Terms** | **Official Cloud Stencils** | Official cloud architectural service shapes (non-commercial & commercial diagramming) |
+| **Google Cloud Icons** | **CC-BY-4.0** | **Official Cloud Stencils** | Official 2025 Core & Cloud Product icons |
+| **Azure Architecture Icons** | **Microsoft Terms** | **Official Cloud Stencils** | Official Microsoft public cloud service shapes |
 | **Rnote** | **GPL-3.0-or-later** | **Architectural Reference (Stylus & Wayland)** | Separation of document engine from GTK UI, libinput stylus pressure handling, PDF layer separation |
 | **tldraw** | **Proprietary (tldraw SDK)** | **Architectural Reference (State & Geometry)** | Shape definition contracts, camera transforms, selection math. *DO NOT use SDK as dependency due to restrictive commercial license.* |
 | **Xournal++ / Okular** | **GPL-2.0+** | **Functional Reference (PDF Annotations)** | Infinite vs. paged layout considerations, stylus pen/highlighter switching |
@@ -33,17 +37,28 @@ CanvasTube draws architectural inspiration from several outstanding open-source 
 
 ---
 
-## 3. Deep Dive: draw.io / diagrams.net
+## 3. Deep Dive: Architecture Stencil Ecosystem & Cloud Licensing
 
-- **Repository**: [jgraph/drawio](https://github.com/jgraph/drawio)
-- **License**: Apache-2.0.
-- **Key Lessons for CanvasTube**:
-  - **Stencil Taxonomy**: Comprehensive categorization of cloud providers (AWS architecture icons, Google Cloud platform, Azure enterprise, Kubernetes).
-  - **Connector Routing**: Orthogonal edge routing algorithms preventing connector lines from overlapping boxes in complex microservice architectures.
-  - **Offline Desktop Electron Model**: draw.io demonstrates how desktop file associations and local folder saving provide superior user autonomy compared to SaaS tools.
-- **Usage in CanvasTube**:
-  - Vector stencils are sanitized and adapted into our `IconRegistry`.
-  - Future phases will integrate orthogonal connector routing inspired by draw.io's graph routing algorithms.
+CanvasTube bundles 133+ vector stencils cleanly categorized by cloud vendor and domain:
+
+### Kubernetes Official Icons
+- **Source**: [`kubernetes/community/icons`](https://github.com/kubernetes/community/tree/master/icons)
+- **License**: Dual-licensed under **Apache-2.0** or **Creative Commons Attribution 4.0 International (CC-BY-4.0)**.
+- **Usage**: Cleaned vector SVGs without embedded text, normalized to 64x64 viewports for high-DPI scaling.
+
+### Google Cloud (GCP) Icons
+- **Source**: [Google Cloud Architecture Icons](https://cloud.google.com/icons)
+- **License**: **Creative Commons Attribution 4.0 International (CC-BY-4.0)**.
+- **Usage**: Bundles official 2025 Core Product Icons and catalog service marks.
+
+### AWS Architecture Icons
+- **Source**: [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/)
+- **Terms**: Permitted for creating architectural diagrams and technical presentations.
+- **Usage**: Bundles official 64px service icons cleaned of proprietary metadata headers.
+
+### Microsoft Azure Architecture Icons
+- **Source**: [Azure Architecture Center Icons](https://learn.microsoft.com/en-us/azure/architecture/icons/)
+- **Terms**: Permitted by Microsoft for building architecture diagrams and technical documentation.
 
 ---
 

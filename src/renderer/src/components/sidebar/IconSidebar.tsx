@@ -27,13 +27,10 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
   const handleAddIcon = (icon: IconDefinition) => {
     if (!adapter) return
 
-    const camera = adapter.getCamera()
+    // Calculate center of current viewport using adapter screenToScene
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
-
-    // Center of current viewport in scene coordinates
-    const sceneCenterX = -camera.x / camera.zoom + viewportWidth / (2 * camera.zoom)
-    const sceneCenterY = -camera.y / camera.zoom + viewportHeight / (2 * camera.zoom)
+    const sceneCenter = adapter.screenToScene(viewportWidth / 2, viewportHeight / 2)
 
     const dataUrl = IconRegistry.svgToDataUrl(icon.svgContent)
     const fileId = `icon_file_${icon.id}_${Date.now()}`
@@ -50,8 +47,8 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
     const size = 64
     adapter.addObject({
       type: 'image',
-      x: sceneCenterX - size / 2,
-      y: sceneCenterY - size / 2,
+      x: Math.round(sceneCenter.x - size / 2),
+      y: Math.round(sceneCenter.y - size / 2),
       width: size,
       height: size,
       fileId,
@@ -94,13 +91,13 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
     )
   }
 
-  const providers: { id: IconProvider | 'all'; label: string }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'generic', label: 'Generic' },
-    { id: 'kubernetes', label: 'Kubernetes' },
-    { id: 'aws', label: 'AWS (Future)' },
-    { id: 'gcp', label: 'GCP (Future)' },
-    { id: 'azure', label: 'Azure (Future)' }
+  const providers: { id: IconProvider | 'all'; label: string; count: number }[] = [
+    { id: 'all', label: 'All', count: registry.getAll().length },
+    { id: 'generic', label: 'Generic', count: registry.search('', 'generic').length },
+    { id: 'aws', label: 'AWS', count: registry.search('', 'aws').length },
+    { id: 'gcp', label: 'GCP', count: registry.search('', 'gcp').length },
+    { id: 'azure', label: 'Azure', count: registry.search('', 'azure').length },
+    { id: 'kubernetes', label: 'K8s', count: registry.search('', 'kubernetes').length }
   ]
 
   return (
@@ -167,7 +164,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
           <Search size={14} color="#71717a" />
           <input
             type="text"
-            placeholder="Search servers, databases..."
+            placeholder="Search ec2, s3, sql, pod..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -206,10 +203,24 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
               whiteSpace: 'nowrap',
               backgroundColor: selectedProvider === p.id ? '#2563eb' : '#27272a',
               color: selectedProvider === p.id ? '#ffffff' : '#a1a1aa',
-              fontWeight: selectedProvider === p.id ? 600 : 400
+              fontWeight: selectedProvider === p.id ? 600 : 400,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
             }}
           >
-            {p.label}
+            <span>{p.label}</span>
+            <span
+              style={{
+                fontSize: 9,
+                opacity: 0.75,
+                backgroundColor: selectedProvider === p.id ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                padding: '1px 4px',
+                borderRadius: 4
+              }}
+            >
+              {p.count}
+            </span>
           </button>
         ))}
       </div>
@@ -229,6 +240,12 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
         {filteredIcons.map((icon) => (
           <div
             key={icon.id}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('application/json', JSON.stringify(icon))
+              e.dataTransfer.setData('text/plain', icon.name)
+              e.dataTransfer.effectAllowed = 'copy'
+            }}
             onClick={() => handleAddIcon(icon)}
             style={{
               backgroundColor: '#18181b',
@@ -238,7 +255,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              cursor: 'pointer',
+              cursor: 'grab',
               transition: 'all 0.15s ease',
               textAlign: 'center',
               userSelect: 'none'
@@ -251,7 +268,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
               e.currentTarget.style.borderColor = '#3f3f46'
               e.currentTarget.style.backgroundColor = '#18181b'
             }}
-            title={`Click to add ${icon.name} to canvas`}
+            title={`Click to place at center, or drag & drop anywhere onto canvas (${icon.name})`}
           >
             <div
               style={{ width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -306,7 +323,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({ adapter, isOpen, onTog
           lineHeight: 1.4
         }}
       >
-        Click any icon to place it onto the active canvas viewport.
+        Click to place at center, or <strong>drag & drop</strong> directly onto the canvas.
       </div>
     </aside>
   )

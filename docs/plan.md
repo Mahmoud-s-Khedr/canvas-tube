@@ -29,7 +29,7 @@
 |---|---|---|---|---|
 | **Phase 0** | **Foundation, Toolchain & Core Abstractions** | `[x]` Completed | Sprint 1 | 100% |
 | **Phase 1** | **Infinite Canvas & Stylus Input Slice** | `[x]` Completed | Sprint 1 | 100% |
-| **Phase 2** | **Technical Stencils & Camera Bookmarks** | `[/]` In Progress | Sprint 2 | 25% |
+| **Phase 2** | **Technical Stencils & Camera Bookmarks** | `[/]` In Progress | Sprint 2 | 75% |
 | **Phase 3** | **PDF Annotation & Technical Documents** | `[ ]` Planned | Sprint 3 | 0% |
 | **Phase 4** | **Recording, OBS Studio & Production Export** | `[ ]` Planned | Sprint 4 | 0% |
 | **Phase 5** | **Packaging, Hardening & CI Pipeline** | `[/]` In Progress | Sprint 5 | 20% |
@@ -90,13 +90,15 @@
 ### Phase 2: Technical Explanation Tooling & Stencil Ecosystem
 *Goal: Rich architecture stencil packs, camera bookmarks for video scene navigation, and smart connector lines.*
 
-- [/] **Expanded Architecture Stencil Packs**
-  - [x] Stencil search and category filtering architecture.
-  - [ ] AWS 2024 architecture icon set (Compute, Storage, Database, Network, Security, Messaging).
-  - [ ] GCP (Google Cloud Platform) official architecture icons.
-  - [ ] Microsoft Azure enterprise stencils.
-  - [ ] Kubernetes full resource set (Deployment, ReplicaSet, StatefulSet, Ingress, ConfigMap, Secret).
-  - [ ] Drag-and-drop stencils directly from sidebar onto exact canvas drop coordinates.
+- [/] **Expanded Architecture Stencil Packs & Official Cloud Icon Ecosystem**
+  - [x] Stencil search and category filtering architecture with keyword tagging.
+  - [x] Official AWS Architecture Icons (33 vectors: EC2, Lambda, S3, RDS, DynamoDB, Aurora, SQS, SNS, EventBridge, Step Functions, CloudFront, API Gateway, Route 53, VPC, SageMaker, Bedrock, etc.).
+  - [x] Official Google Cloud (GCP) Icons (34 vectors: 2025 Core + Service catalog: Compute Engine, GKE, Cloud Run, Cloud Functions, GCS, BigQuery, Cloud SQL, Spanner, AlloyDB, Vertex AI, Pub/Sub, Cloud Armor, etc.).
+  - [x] Official Microsoft Azure Public Service Icons (30 vectors: Virtual Machines, Functions, App Services, AKS, Container Instances, Blob Storage, Cosmos DB, SQL DB, PostgreSQL, Redis, VNet, Event Hubs, Azure OpenAI, etc.).
+  - [x] Official Kubernetes CNCF / community resource set (23 vectors: Pod, Deployment, Service, Ingress, ConfigMap, Secret, StatefulSet, DaemonSet, Job, CronJob, PV, PVC, StorageClass, Namespace, NetworkPolicy, HPA, CRD, ServiceAccount, Role, ClusterRole, Node, Control Plane, etcd).
+  - [x] Generic architecture components (13 vectors: Server, Database, Cache, Queue, Load Balancer, Firewall, CDN, Mobile Client, Web Browser, User, Storage, Cloud, Microservice).
+  - [x] HTML5 drag-and-drop stencils directly from sidebar onto exact canvas drop scene coordinates.
+  - [x] Dedicated `assets/icons/` directory with automated discovery via `import.meta.glob` and `npm run sync:stencils`.
   - [ ] Custom user stencil import (drag SVG folder to add custom icon pack).
 - [ ] **Camera Bookmarks & Presenter Tour Mode**
   - [ ] Camera Bookmark data model (`id`, `title`, `bounds`, `zoom`, `orderIndex`).

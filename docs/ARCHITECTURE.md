@@ -1,62 +1,66 @@
-# CanvasTube Architecture Specification
+# CanvasTube System Architecture Specification
 
-## 1. Overview and Core Philosophy
+> **Version**: 0.2.0  
+> **Status**: Approved & Implemented (Foundation, Canvas Slice, Official Cloud Stencils)  
+> **Target OS**: Fedora Linux (x86_64 / aarch64), Wayland Compositor (GNOME / KDE)  
+> **Digitizer Target**: XP-Pen Deco 01 V3 (8192 Pressure Levels, Tilt, Sub-pixel Coordinates)
 
-CanvasTube is engineered as an **offline desktop technical explanation workspace**. Its primary architectural goal is to decouple application business logic, project storage, technical asset libraries, and hardware input handling from any specific canvas rendering engine.
+---
+
+## 1. High-Level Architecture Overview
+
+CanvasTube is engineered around four core decoupled subsystems:
+1. **Desktop Host Process (Electron Main)**: Native window lifecycle, Linux Wayland display server configuration, hardware digitizer flag negotiation, and atomic local-filesystem I/O.
+2. **Preload Security Bridge**: Secure, context-isolated bridge establishing a strongly-typed IPC interface (`DesktopApi`) without exposing Node.js runtime primitives to the DOM.
+3. **Core Domain Layer (`@core`)**: Pure TypeScript models for project manifest management, SHA-256 content-addressed asset deduplication, vector stencil registry, and abstract canvas contracts.
+4. **Presentation & Canvas Shell (React Renderer)**: Decoupled UI housing the top controls, hardware stylus inspector, collapsible architecture stencil drawer, and canvas adapter.
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Application Shell                              │
-│   ┌────────────────────────┐  ┌───────────────────┐  ┌──────────────────┐   │
-│   │       TopToolbar       │  │    IconSidebar    │  │  InputInspector  │   │
-│   │ (Save, Record, Import) │  │  (System Stencils)│  │ (Stylus / Wayland│   │
-│   └───────────┬────────────┘  └─────────┬─────────┘  └────────┬─────────┘   │
-│               │                         │                     │             │
-│               └────────────────┬────────┴─────────────────────┘             │
-│                                ▼                                            │
-│                     ┌──────────────────────┐                                │
-│                     │    CanvasAdapter     │                                │
-│                     │   (Core Interface)   │                                │
-│                     └──────────┬───────────┘                                │
-│                                ▼                                            │
-│                 ┌─────────────────────────────┐                             │
-│                 │   ExcalidrawCanvasAdapter   │                             │
-│                 └──────────────┬──────────────┘                             │
-│                                ▼                                            │
-│                 ┌─────────────────────────────┐                             │
-│                 │   @excalidraw/excalidraw    │                             │
-│                 │      (React Component)      │                             │
-│                 └─────────────────────────────┘                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                 Secure Preload Bridge (`window.desktopApi`)                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                             Electron Main Process                           │
-│   ┌───────────────────────────┐         ┌───────────────────────────────┐   │
-│   │      ProjectService       │         │       WindowManager           │   │
-│   │ (Atomic write, sha256 hash│         │ (Wayland flags, sandboxing,   │   │
-│   │  manifest v1 validation)  │         │  native dialogs)              │   │
-│   └───────────────────────────┘         └───────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Renderer Process (DOM)                          │
+│                                                                        │
+│   ┌────────────────┐ ┌───────────────────┐ ┌──────────────────────┐   │
+│   │   TopToolbar   │ │   IconSidebar     │ │    InputInspector    │   │
+│   └───────┬────────┘ └────────┬──────────┘ └──────────┬───────────┘   │
+│           │                   │                       │               │
+│           ▼                   ▼                       ▼               │
+│   ┌───────────────────────────────────────────────────────────────┐   │
+│   │              CanvasView & CanvasAdapter Interface             │   │
+│   │             (e.g., ExcalidrawCanvasAdapter.ts)                │   │
+│   └───────────────────────────┬───────────────────────────────────┘   │
+│                               │                                       │
+│   ┌───────────────────────────▼───────────────────────────────────┐   │
+│   │                 Pure Domain Services (@core)                  │   │
+│   │   ProjectService  │  AssetRegistry  │  IconRegistry / Loader  │   │
+│   └───────────────────────────┬───────────────────────────────────┘   │
+└───────────────────────────────┼───────────────────────────────────────┘
+                                │ Typed IPC (window.desktopApi)
+┌───────────────────────────────▼───────────────────────────────────────┐
+│                      Preload Security Boundary                        │
+│            contextIsolation: true  │  sandbox: true                   │
+└───────────────────────────────┬───────────────────────────────────────┘
+                                │ Electron IPC Channels
+┌───────────────────────────────▼───────────────────────────────────────┐
+│                     Main Process (Node.js/Electron)                   │
+│                                                                        │
+│   - Wayland Ozone Platform Flags & libinput Stylus Calibration        │
+│   - Native Folder Dialogs (Open, Save As)                             │
+│   - Atomic Local Bundle Persistence (project.json, scene.json)        │
+│   - Asset SHA-256 Ingestion & Content-Addressed Store                 │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Process Separation & Security Boundary
+## 2. Process Boundaries & Security Model
 
-CanvasTube adheres strictly to Electron security guidelines:
+The Chromium sandbox is strictly enforced. The renderer process has **zero access** to `child_process`, raw Node `fs`, `net`, or native OS handles.
 
-| Setting | Value | Rationale |
-|---|---|---|
-| `contextIsolation` | `true` | Prevents renderer scripts from accessing Electron/Node prototypes |
-| `nodeIntegration` | `false` | Disables Node.js runtime inside the browser window |
-| `sandbox` | `true` | Enforces Chromium renderer OS sandboxing |
-| `webSecurity` | `true` | Enforces standard Same-Origin Policy and CSP |
+### Typed Desktop Bridge (`DesktopApi`)
 
-### Preload Bridge Contract (`DesktopApi`)
+All interaction with the underlying operating system passes through the `DesktopApi` interface:
 
-The renderer interacts with the operating system through a typed API defined in `src/core/desktop/desktop-api.ts`:
-
-- `openProject(): Promise<OpenProjectResult | null>`: Invokes native directory picker and deserializes project files.
+- `openProject(): Promise<OpenProjectResult | null>`: Shows native directory picker and parses `project.json` and `scene.json`.
 - `saveProject(projectDir, bundle): Promise<SaveProjectResult>`: Performs atomic write of `project.json` and `scene.json`.
 - `saveProjectAs(title, bundle): Promise<SaveProjectResult | null>`: Prompts for directory destination and persists bundle.
 - `importAsset(): Promise<ImportAssetResult | null>`: Reads media files, computes SHA-256 hash, and provides base64 data URLs.
@@ -87,6 +91,7 @@ export interface CanvasAdapter {
   serialize(): unknown
   deserialize(scene: unknown): void
   addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void
+  clientToScene(clientPoint: Point): Point
   setPointerListener(listener?: (snapshot: CanvasPointerSnapshot) => void): void
   setChangeListener(listener?: (sceneData: unknown) => void): void
 }
@@ -95,7 +100,7 @@ export interface CanvasAdapter {
 ### ExcalidrawCanvasAdapter Implementation
 
 - **Element Construction**: Translates generic shape inputs (`rectangle`, `diamond`, `ellipse`, `arrow`, `line`, `text`, `image`) into Excalidraw skeleton formats via Excalidraw's `convertToExcalidrawElements` utility.
-- **Coordinate Space Conversion**: Normalizes client mouse/stylus coordinates into infinite canvas scene space using viewport camera offsets (`scrollX`, `scrollY`) and zoom factors.
+- **Coordinate Space Conversion**: Normalizes client mouse/stylus coordinates into infinite canvas scene space using viewport camera offsets (`scrollX`, `scrollY`) and zoom factors (`clientToScene`).
 - **Offline Fonts**: Sets `window.EXCALIDRAW_ASSET_PATH = '/fonts/'` and bundles offline TTF/WOFF2 font assets locally, preventing remote network requests to third-party CDNs.
 
 ---
@@ -174,3 +179,27 @@ For YouTube presentations and technical screencasts:
 - Collapses top application chrome and controls.
 - Enables Excalidraw's Zen Mode (`zenModeEnabled={true}`), hiding canvas property panels and navigation chrome.
 - Displays a minimal floating recording indicator with hotkey exit hint.
+
+---
+
+## 7. Architecture Stencil & Icon Asset Pipeline
+
+CanvasTube bundles 133+ vector architecture stencils directly into the offline application binary without network calls:
+
+### Directory Structure & Bundling
+- SVGs are stored locally under [`assets/icons/`](../assets/icons/) partitioned by provider (`aws/`, `gcp/`, `azure/`, `kubernetes/`, `generic/`).
+- [`src/core/icons/icon-loader.ts`](../src/core/icons/icon-loader.ts) uses Vite's compile-time globbing:
+  ```typescript
+  import.meta.glob('../../../assets/icons/**/*.svg', { query: '?raw', import: 'default', eager: true })
+  ```
+  This embeds all SVGs as inlined strings in the renderer distribution bundle.
+
+### Metadata & Search Engine
+- [`src/core/icons/icon-metadata.ts`](../src/core/icons/icon-metadata.ts) maps icon IDs to human-readable names, categories, and keyword synonym tags.
+- [`IconRegistry`](../src/core/icons/icon-registry.ts) indexes stencils by category and provider, matching against multi-term search queries across titles, categories, and tags.
+
+### Drag-and-Drop to Canvas Coordinates
+- When a user drags an icon from [`IconSidebar`](../src/renderer/src/components/sidebar/IconSidebar.tsx) and drops it on [`CanvasView`](../src/renderer/src/components/canvas/CanvasView.tsx):
+  1. The client cursor coordinates `(e.clientX, e.clientY)` are converted to infinite-canvas scene coordinates via `adapter.clientToScene({ x, y })`.
+  2. The SVG data is registered with `adapter.addFile({ id, mimeType: 'image/svg+xml', dataURL })`.
+  3. An `image` element is added at the exact drop coordinate centered under the cursor via `adapter.addObject()`.

@@ -78,6 +78,7 @@ export interface CanvasAdapter {
   setCamera(camera: CameraState): void
   zoomTo(bounds: Bounds): void
   resetView(): void
+  screenToScene(clientX: number, clientY: number): Point
 
   getTool(): CanvasToolType
   setTool(tool: CanvasToolType): void

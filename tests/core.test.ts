@@ -8,6 +8,7 @@ import {
 } from '../src/core/project/project-manifest'
 import { AssetRegistry } from '../src/core/assets/asset-registry'
 import { IconRegistry, INITIAL_ICON_DEFINITIONS } from '../src/core/icons/icon-registry'
+import { loadSvgIcons } from '../src/core/icons/icon-loader'
 
 describe('Project Manifest and Serialization', () => {
   it('creates a valid default manifest with formatVersion 1', () => {
@@ -127,22 +128,55 @@ describe('Asset Registry & Deduplication', () => {
 })
 
 describe('Icon Registry & Search', () => {
-  it('loads initial safe icon definitions and searches by keyword and provider', () => {
+  it('loads svg icons from assets folder via glob', () => {
+    const svgs = loadSvgIcons()
+    expect(Object.keys(svgs).length).toBeGreaterThan(120)
+  })
+
+  it('loads expanded official icon catalog across all cloud and k8s providers', () => {
     const registry = new IconRegistry(INITIAL_ICON_DEFINITIONS)
-    expect(registry.getAll().length).toBeGreaterThan(5)
+    expect(registry.getAll().length).toBeGreaterThanOrEqual(125)
 
-    // Search for database
-    const dbResults = registry.search('database')
-    expect(dbResults.some((i) => i.name === 'Database')).toBe(true)
+    // Check each provider has rich catalog
+    const providers = registry.getProviders()
+    expect(providers).toContain('generic')
+    expect(providers).toContain('aws')
+    expect(providers).toContain('gcp')
+    expect(providers).toContain('azure')
+    expect(providers).toContain('kubernetes')
 
-    // Search with provider filter
-    const k8sResults = registry.search('', 'kubernetes')
-    expect(k8sResults.length).toBe(1)
-    expect(k8sResults[0].id).toBe('gen-k8s-pod')
+    expect(registry.search('', 'aws').length).toBeGreaterThanOrEqual(30)
+    expect(registry.search('', 'gcp').length).toBeGreaterThanOrEqual(30)
+    expect(registry.search('', 'azure').length).toBeGreaterThanOrEqual(25)
+    expect(registry.search('', 'kubernetes').length).toBeGreaterThanOrEqual(20)
+    expect(registry.search('', 'generic').length).toBeGreaterThanOrEqual(10)
+  })
 
-    // SQS / Kafka tag search
-    const queueResults = registry.search('kafka')
-    expect(queueResults.some((i) => i.id === 'gen-queue')).toBe(true)
+  it('searches by keyword across names and tags', () => {
+    const registry = new IconRegistry(INITIAL_ICON_DEFINITIONS)
+
+    // Search for lambda in AWS
+    const lambdaResults = registry.search('lambda')
+    expect(lambdaResults.some((i) => i.id === 'aws-lambda')).toBe(true)
+
+    // Search for BigQuery in GCP
+    const bqResults = registry.search('bigquery')
+    expect(bqResults.some((i) => i.id === 'gcp-bigquery')).toBe(true)
+
+    // Search for Cosmos in Azure
+    const cosmosResults = registry.search('cosmos')
+    expect(cosmosResults.some((i) => i.id === 'azure-cosmos')).toBe(true)
+
+    // Search for Ingress & Pod in official Kubernetes
+    const ingressResults = registry.search('ingress')
+    expect(ingressResults.some((i) => i.id === 'k8s-ingress')).toBe(true)
+
+    const podResults = registry.search('pod')
+    expect(podResults.some((i) => i.id === 'k8s-pod')).toBe(true)
+
+    // Search for cache/redis in generic
+    const cacheResults = registry.search('redis')
+    expect(cacheResults.some((i) => i.id === 'gen-cache')).toBe(true)
   })
 
   it('converts SVG content to valid data URL', () => {

@@ -11,7 +11,7 @@ Phase 0 ──► Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4
 Setup &     Infinite    Architecture Document &   Video Recording
 Foundation  Canvas &    Stencils &   PDF Workflow Production
             Stylus      Bookmarks                 Export
-[COMPLETED] [COMPLETED] [PLANNED]    [PLANNED]    [PLANNED]
+[COMPLETED] [COMPLETED] [IN PROGRESS][PLANNED]    [PLANNED]
 ```
 
 ---
@@ -39,23 +39,27 @@ Foundation  Canvas &    Stencils &   PDF Workflow Production
 
 ---
 
-## Phase 2: Technical Explanation Tooling & Stencil Ecosystem (Next Milestone)
+## Phase 2: Technical Explanation Tooling & Stencil Ecosystem (In Progress)
 
-### 1. Expanded Architecture Icon Packs
-- Comprehensive AWS icon library (Compute, Storage, Networking, Database, Security, Analytics).
-- Official GCP architecture shapes and Google Cloud icons.
-- Official Azure enterprise stencils.
-- Kubernetes primitives (Pods, Deployments, Services, Ingress, StatefulSets, ConfigMaps).
-- Draw.io stencil SVG parser/importer for custom stencil packs.
+### 1. Expanded Architecture Icon Packs (Completed)
+- [x] **Official AWS Architecture Icons** (33 vector stencils: EC2, Lambda, S3, RDS, DynamoDB, Aurora, SQS, SNS, EventBridge, CloudFront, VPC, Bedrock, SageMaker, etc.).
+- [x] **Official Google Cloud (GCP) Icons** (34 vector stencils: Compute Engine, GKE, Cloud Run, GCS, Cloud SQL, Spanner, BigQuery, Vertex AI, Pub/Sub, Cloud Armor, etc.).
+- [x] **Official Microsoft Azure Service Icons** (30 vector stencils: Virtual Machines, Functions, App Services, AKS, Blob Storage, Cosmos DB, SQL DB, Redis, Event Hubs, Azure OpenAI, etc.).
+- [x] **Official Kubernetes Icons** (23 vector stencils directly from `kubernetes/community`: Pod, Deployment, Service, Ingress, ConfigMap, Secret, StatefulSet, DaemonSet, PV/PVC, Node, Control Plane, etc.).
+- [x] **Generic Architecture Primitives** (13 vector stencils: Server, Database, Cache, Queue, Load Balancer, Firewall, CDN, Client, User, Storage, Microservice).
+- [x] **Live Keyword Tag Search** (fuzzy search across service names, categories, and technology tags).
+- [x] **Drag-and-Drop to Canvas** (HTML5 drag-and-drop projecting directly onto infinite canvas scene coordinates).
+- [x] Automated upstream sync script (`scripts/sync-official-icons.mjs` / `npm run sync:stencils`).
 
-### 2. Camera Bookmarks & Scene Tour
-- Saved camera viewpoints (`CameraBookmark`: name, bounds, zoom, description).
-- Visual timeline/drawer to jump smoothly between technical diagram sections while speaking.
-- Keyboard navigation (`PageDown`/`PageUp` or `Alt + [1-9]`) to pan the camera between architecture components.
+### 2. Camera Bookmarks & Scene Tour (Next Milestone)
+- [ ] Saved camera viewpoints (`CameraBookmark`: name, bounds, zoom, description).
+- [ ] Visual timeline/drawer to jump smoothly between technical diagram sections while speaking.
+- [ ] Keyboard navigation (`PageDown`/`PageUp` or `Alt + [1-9]`) to pan the camera between architecture components.
 
 ### 3. Connector & Arrow Enhancements
-- Smart orthogonal routing around architecture boxes (drawing inspiration from Draw.io / wire routers).
-- Bidirectional and labeled data-flow arrows with protocol tags (e.g. `gRPC`, `HTTPS`, `Kafka Topic`).
+- [ ] Smart orthogonal routing around architecture boxes (drawing inspiration from Draw.io / wire routers).
+- [ ] Bidirectional and labeled data-flow arrows with protocol tags (e.g. `gRPC`, `HTTPS`, `Kafka Topic`).
+- [ ] Magnetic snap-to-anchor points on architecture stencils.
 
 ---
 

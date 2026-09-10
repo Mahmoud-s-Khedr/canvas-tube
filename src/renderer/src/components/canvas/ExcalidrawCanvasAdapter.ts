@@ -4,6 +4,7 @@ import {
   ObjectId,
   CameraState,
   Bounds,
+  Point,
   CanvasToolType,
   CanvasPointerSnapshot
 } from '@core/canvas/canvas-adapter'
@@ -224,6 +225,14 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
         zoom: { value: camera.zoom as any }
       }
     })
+  }
+
+  public screenToScene(clientX: number, clientY: number): Point {
+    const camera = this.getCamera()
+    return {
+      x: (clientX - camera.x) / camera.zoom,
+      y: (clientY - camera.y) / camera.zoom
+    }
   }
 
   public zoomTo(bounds: Bounds): void {
