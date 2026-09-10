@@ -1,6 +1,8 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import { FileText, Terminal } from 'lucide-react'
 import { ExcalidrawCanvasAdapter } from './ExcalidrawCanvasAdapter'
 import { IconRegistry, IconDefinition } from '@core/icons/icon-registry'
 import '@excalidraw/excalidraw/index.css'
@@ -12,6 +14,8 @@ interface CanvasViewProps {
   sidebarWidth?: number
   isResizingSidebar?: boolean
   onDropPdfPage?: (pageNumber: number, sceneX: number, sceneY: number) => void
+  onImportPdf?: () => void
+  onOpenCodeSnippetModal?: () => void
 }
 
 export const CanvasView: React.FC<CanvasViewProps> = ({
@@ -20,9 +24,35 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   isSidebarOpen,
   sidebarWidth = 280,
   isResizingSidebar = false,
-  onDropPdfPage
+  onDropPdfPage,
+  onImportPdf,
+  onOpenCodeSnippetModal
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [toolbarEl, setToolbarEl] = useState<HTMLElement | null>(null)
+
+  // Find the Excalidraw toolbar stack container and attach custom dock actions
+  useEffect(() => {
+    const updateToolbar = () => {
+      const el = (containerRef.current?.querySelector('.App-toolbar .Stack_horizontal') ||
+        containerRef.current?.querySelector('.App-toolbar')) as HTMLElement | null
+      if (el !== toolbarEl) {
+        setToolbarEl(el)
+      }
+    }
+
+    updateToolbar()
+
+    const observer = new MutationObserver(() => {
+      updateToolbar()
+    })
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current, { childList: true, subtree: true })
+    }
+
+    return () => observer.disconnect()
+  }, [toolbarEl])
 
   const handlePointer = (e: React.PointerEvent<HTMLDivElement>) => {
     adapter.recordPointerEvent(e)
@@ -128,9 +158,39 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
             saveToActiveFile: false,
             toggleTheme: true,
             saveAsImage: false
+          },
+          tools: {
+            image: false
           }
         }}
       />
+
+      {/* Portaled Dock Extensions: PDF / Slides & Code Card */}
+      {toolbarEl &&
+        createPortal(
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <div className="App-toolbar__divider" />
+            <button
+              type="button"
+              className="canvastube-dock-btn"
+              onClick={onImportPdf}
+              title="Import PDF / Presentation Slides onto Canvas"
+              aria-label="Import PDF / Slides"
+            >
+              <FileText size={17} color="#ef4444" />
+            </button>
+            <button
+              type="button"
+              className="canvastube-dock-btn"
+              onClick={onOpenCodeSnippetModal}
+              title="Insert Syntax-Highlighted Code Card"
+              aria-label="Insert Code Card"
+            >
+              <Terminal size={17} color="#10b981" />
+            </button>
+          </div>,
+          toolbarEl
+        )}
     </div>
   )
 }

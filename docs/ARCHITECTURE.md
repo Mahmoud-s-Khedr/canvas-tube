@@ -311,3 +311,23 @@ CanvasTube provides cross-platform packaging with automated quality verification
 ### GitHub Actions CI Architecture
 - **Fedora 41 Container Job** ([`.github/workflows/build-fedora-debug.yml`](../.github/workflows/build-fedora-debug.yml)): Runs in an official Fedora 41 container to validate dependencies against Fedora glibc, building Linux AppImage, debug archives, and RPMs.
 - **Windows 10/11 Job** ([`.github/workflows/build-windows.yml`](../.github/workflows/build-windows.yml)): Runs on GitHub's native `windows-latest` runner (Windows 11 / Server 2022) to build native Windows Portable executables and NSIS installers.
+
+---
+
+## 12. Canvas Toolbar Docking & UI Ergonomics
+
+To provide maximum visual focus for live demonstrations and recordings, CanvasTube integrates auxiliary creation tools directly into Excalidraw's floating dock while consolidating top window chrome:
+
+### React Portal Dock Integration
+- Rather than displaying disconnected buttons across the application header, [`CanvasView`](../src/renderer/src/components/canvas/CanvasView.tsx) utilizes a `MutationObserver` to monitor the Excalidraw UI container for `.App-toolbar .Stack_horizontal`.
+- A React Portal (`createPortal`) dynamically injects custom dock buttons into the floating dock:
+  - **PDF / Presentation Slides Trigger**: Ingests offline PDF slide decks into the multi-slide tray.
+  - **Syntax Code Card Trigger**: Spawns the IDE-styled code card configuration dialog.
+- Custom dock buttons (`.canvastube-dock-btn`) inherit Excalidraw's standard dimensions (`var(--lg-button-size)`), radius, hover fills, and active scale animations.
+
+### Header Streamlining & Split Controls
+- **Unified Save Split-Button**: Replaces standalone Save and Save As buttons in [`TopToolbar`](../src/renderer/src/components/toolbar/TopToolbar.tsx) with a consolidated split-button featuring direct `Save` (`Ctrl+S`) and a dropdown trigger revealing `Save As...` (`Ctrl+Shift+S`). Includes click-outside dismissal logic.
+- **Tour & Bookmark Segmented Control**: Combines the slide-out Bookmarks Drawer toggle with a direct `+` quick-capture button, displaying an active count badge.
+- **Conflict Prevention**: Excalidraw's default right-hand library trigger is suppressed via CSS to ensure the left Architecture Library remains the canonical stencil source, and `Ctrl+E` is unmapped from export to protect Excalidraw's single-key eraser (`E`) ergonomics.
+
+See full specification in [`docs/CANVAS-TOOLBAR-DOCKING.md`](CANVAS-TOOLBAR-DOCKING.md).

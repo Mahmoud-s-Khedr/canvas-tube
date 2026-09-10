@@ -1,18 +1,19 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   FolderOpen,
   Save,
   FilePlus,
   Image as ImageIcon,
   FileText,
-  Terminal,
   Activity,
   Video,
   Minimize2,
   Code,
   Bookmark,
-  BookmarkPlus,
-  Download
+  Plus,
+  Download,
+  ChevronDown,
+  FileDown
 } from 'lucide-react'
 
 interface TopToolbarProps {
@@ -34,8 +35,6 @@ interface TopToolbarProps {
   onSaveProject: () => void
   onSaveProjectAs: () => void
   onImportImage: () => void
-  onImportPdf: () => void
-  onOpenCodeSnippetModal: () => void
   onOpenExport: () => void
   onToggleDevTools: () => void
 }
@@ -59,11 +58,24 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   onSaveProject,
   onSaveProjectAs,
   onImportImage,
-  onImportPdf,
-  onOpenCodeSnippetModal,
   onOpenExport,
   onToggleDevTools
 }) => {
+  const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false)
+  const saveMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close Save dropdown on click outside
+  useEffect(() => {
+    if (!isSaveMenuOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (saveMenuRef.current && !saveMenuRef.current.contains(e.target as Node)) {
+        setIsSaveMenuOpen(false)
+      }
+    }
+    window.addEventListener('mousedown', handleClickOutside)
+    return () => window.removeEventListener('mousedown', handleClickOutside)
+  }, [isSaveMenuOpen])
+
   if (isRecordingMode) {
     // In recording mode: render a minimal floating bar in the top right
     return (
@@ -180,7 +192,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         </div>
       </div>
 
-      {/* Center: File, Assets, PDF, Code Snippet & Export Actions */}
+      {/* Center: File, Assets, Slide Dock & Export Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <button
           onClick={onNewProject}
@@ -200,22 +212,88 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
           <span>Open</span>
         </button>
 
-        <button
-          onClick={onSaveProject}
-          style={{ ...buttonStyle, backgroundColor: '#2563eb', color: '#ffffff' }}
-          title="Save Project (Ctrl+S)"
-        >
-          <Save size={15} />
-          <span>Save</span>
-        </button>
+        {/* Unified Save & Save As Split-Button */}
+        <div ref={saveMenuRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={onSaveProject}
+            style={{
+              ...buttonStyle,
+              backgroundColor: '#2563eb',
+              borderColor: '#1d4ed8',
+              color: '#ffffff',
+              borderTopRightRadius: 0,
+              borderBottomRightRadius: 0,
+              borderRight: '1px solid #1d4ed8',
+              paddingRight: 8
+            }}
+            title="Save Project (Ctrl+S)"
+          >
+            <Save size={15} />
+            <span>Save</span>
+          </button>
+          <button
+            onClick={() => setIsSaveMenuOpen((prev) => !prev)}
+            style={{
+              ...buttonStyle,
+              backgroundColor: isSaveMenuOpen ? '#1d4ed8' : '#2563eb',
+              borderColor: '#1d4ed8',
+              color: '#ffffff',
+              borderTopLeftRadius: 0,
+              borderBottomLeftRadius: 0,
+              padding: '5px 4px'
+            }}
+            title="Save Options"
+          >
+            <ChevronDown size={13} />
+          </button>
 
-        <button
-          onClick={onSaveProjectAs}
-          style={buttonStyle}
-          title="Save Project As... (Ctrl+Shift+S)"
-        >
-          <span>Save As...</span>
-        </button>
+          {isSaveMenuOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 4px)',
+                left: 0,
+                backgroundColor: '#18181b',
+                border: '1px solid #3f3f46',
+                borderRadius: 6,
+                boxShadow: '0 8px 20px rgba(0, 0, 0, 0.6)',
+                zIndex: 100,
+                minWidth: 165,
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '4px',
+                gap: 2
+              }}
+            >
+              <button
+                onClick={() => {
+                  setIsSaveMenuOpen(false)
+                  onSaveProject()
+                }}
+                style={menuItemStyle}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#27272a')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <Save size={14} color="#60a5fa" />
+                <span style={{ flex: 1, textAlign: 'left' }}>Save</span>
+                <span style={{ color: '#71717a', fontSize: 10, marginLeft: 8 }}>Ctrl+S</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsSaveMenuOpen(false)
+                  onSaveProjectAs()
+                }}
+                style={menuItemStyle}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#27272a')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                <FileDown size={14} color="#a1a1aa" />
+                <span style={{ flex: 1, textAlign: 'left' }}>Save As...</span>
+                <span style={{ color: '#71717a', fontSize: 10, marginLeft: 8 }}>Ctrl+Shift+S</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         <div style={{ height: 18, width: 1, backgroundColor: '#3f3f46', margin: '0 4px' }} />
 
@@ -226,24 +304,6 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         >
           <ImageIcon size={15} color="#38bdf8" />
           <span>Image</span>
-        </button>
-
-        <button
-          onClick={onImportPdf}
-          style={buttonStyle}
-          title="Import PDF Document or Presentation Slides"
-        >
-          <FileText size={15} color="#ef4444" />
-          <span>PDF / Slides</span>
-        </button>
-
-        <button
-          onClick={onOpenCodeSnippetModal}
-          style={buttonStyle}
-          title="Insert Syntax-Highlighted Code Card"
-        >
-          <Terminal size={15} color="#10b981" />
-          <span>Code Card</span>
         </button>
 
         <button
@@ -278,45 +338,76 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
 
         <div style={{ height: 18, width: 1, backgroundColor: '#3f3f46', margin: '0 4px' }} />
 
-        {/* Bookmark viewpoint button */}
-        <button
-          onClick={onAddBookmark}
-          style={buttonStyle}
-          title="Save Current Camera Viewpoint as Bookmark (Ctrl+B)"
-        >
-          <BookmarkPlus size={15} color="#60a5fa" />
-          <span>Bookmark View</span>
-        </button>
-
-        {/* Bookmarks Drawer Toggle */}
-        <button
-          onClick={onToggleBookmarks}
+        {/* Unified Camera Bookmarks & Scene Tour Control with inline quick-add trigger */}
+        <div
           style={{
-            ...buttonStyle,
+            display: 'inline-flex',
+            alignItems: 'center',
             backgroundColor: isBookmarksOpen ? '#1e3a8a' : '#27272a',
             border: `1px solid ${isBookmarksOpen ? '#3b82f6' : '#3f3f46'}`,
-            color: isBookmarksOpen ? '#93c5fd' : '#e4e4e7'
+            borderRadius: 6,
+            overflow: 'hidden'
           }}
-          title="Toggle Camera Bookmarks & Scene Tour Drawer"
         >
-          <Bookmark size={15} color="#60a5fa" />
-          <span>Tour</span>
-          {bookmarksCount > 0 && (
-            <span
-              style={{
-                backgroundColor: isBookmarksOpen ? '#3b82f6' : '#3f3f46',
-                color: '#ffffff',
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '1px 5px',
-                borderRadius: 10,
-                marginLeft: 2
-              }}
-            >
-              {bookmarksCount}
-            </span>
-          )}
-        </button>
+          <button
+            onClick={onToggleBookmarks}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 9px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: isBookmarksOpen ? '#93c5fd' : '#e4e4e7',
+              fontSize: 12,
+              cursor: 'pointer'
+            }}
+            title="Toggle Camera Bookmarks & Scene Tour Drawer"
+          >
+            <Bookmark size={15} color="#60a5fa" />
+            <span>Tour</span>
+            {bookmarksCount > 0 && (
+              <span
+                style={{
+                  backgroundColor: isBookmarksOpen ? '#3b82f6' : '#3f3f46',
+                  color: '#ffffff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: 10,
+                  marginLeft: 2
+                }}
+              >
+                {bookmarksCount}
+              </span>
+            )}
+          </button>
+
+          <div
+            style={{
+              width: 1,
+              height: 16,
+              backgroundColor: isBookmarksOpen ? '#3b82f6' : '#3f3f46'
+            }}
+          />
+
+          <button
+            onClick={onAddBookmark}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '5px 7px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: isBookmarksOpen ? '#93c5fd' : '#a1a1aa',
+              cursor: 'pointer'
+            }}
+            title="Quick Bookmark Current View into Tour (Ctrl+B)"
+          >
+            <Plus size={14} color="#60a5fa" />
+          </button>
+        </div>
       </div>
 
       {/* Right: Recording Mode & Dev Inspector Controls */}
@@ -373,4 +464,20 @@ const buttonStyle: React.CSSProperties = {
   fontSize: 12,
   cursor: 'pointer',
   transition: 'background-color 0.15s'
+}
+
+const menuItemStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '6px 8px',
+  backgroundColor: 'transparent',
+  border: 'none',
+  borderRadius: 4,
+  color: '#e4e4e7',
+  fontSize: 12,
+  cursor: 'pointer',
+  textAlign: 'left',
+  width: '100%',
+  transition: 'background-color 0.1s'
 }

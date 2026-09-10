@@ -49,3 +49,35 @@ body,
 ::-webkit-scrollbar-thumb:hover {
   background: #52525b;
 }
+
+/* Hide Excalidraw default floating library button on the right edge (unified under left Architecture Library) */
+.excalidraw .sidebar-trigger.default-sidebar-trigger,
+.excalidraw .default-sidebar-trigger,
+.excalidraw .layer-ui__wrapper .sidebar-triggers {
+  display: none !important;
+}
+
+/* Custom Canvas Dock Buttons */
+.canvastube-dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--lg-button-size, 36px);
+  height: var(--lg-button-size, 36px);
+  border-radius: var(--border-radius-lg, 8px);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #e4e4e7;
+  padding: 0;
+  position: relative;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.canvastube-dock-btn:hover {
+  background-color: var(--button-hover-bg, rgba(255, 255, 255, 0.1));
+}
+
+.canvastube-dock-btn:active {
+  transform: scale(0.92);
+}

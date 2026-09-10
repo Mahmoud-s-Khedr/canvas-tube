@@ -503,13 +503,6 @@ export const App: React.FC = () => {
         return
       }
 
-      // Ctrl+Shift+E or Ctrl+E: Open Export Dialog
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
-        e.preventDefault()
-        setIsExportModalOpen(true)
-        return
-      }
-
       // Ctrl+S: Save
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
@@ -653,8 +646,6 @@ export const App: React.FC = () => {
         onSaveProject={handleSaveProject}
         onSaveProjectAs={handleSaveProjectAs}
         onImportImage={handleImportImage}
-        onImportPdf={handleImportPdf}
-        onOpenCodeSnippetModal={() => setIsCodeModalOpen(true)}
         onOpenExport={() => setIsExportModalOpen(true)}
         onToggleDevTools={handleToggleDevTools}
       />
@@ -680,6 +671,8 @@ export const App: React.FC = () => {
         sidebarWidth={sidebarWidth}
         isResizingSidebar={isResizingSidebar}
         onDropPdfPage={handleDropPdfPage}
+        onImportPdf={handleImportPdf}
+        onOpenCodeSnippetModal={() => setIsCodeModalOpen(true)}
       />
 
       {/* Slide-Strip Dock for Loaded PDF Documents (hidden in recording mode) */}
