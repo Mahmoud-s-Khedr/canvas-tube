@@ -25,7 +25,7 @@ for (const count of counts) {
   }
 
   const t1 = performance.now()
-  const { visibleElements, culledCount } = cullElementsForViewport(scene.elements, camera, 1920, 1080)
+  const { culledCount } = cullElementsForViewport(scene.elements, camera, 1920, 1080)
   const linearTime = (performance.now() - t1).toFixed(2)
 
   const grid = new SpatialGridIndex(800)
