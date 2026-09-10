@@ -1,6 +1,6 @@
 # CanvasTube
 
-Offline desktop infinite-canvas workspace optimized for technical explanations and video recording on Fedora Linux with drawing tablets (XP-Pen Deco 01 V3).
+Offline desktop infinite-canvas workspace optimized for technical explanations and video recording on Linux (Fedora Wayland) and Windows 10 & 11 with drawing tablets (such as XP-Pen Deco 01 V3).
 
 ![CanvasTube Hero](docs/hero-concept.png)
 
@@ -8,13 +8,14 @@ Offline desktop infinite-canvas workspace optimized for technical explanations a
 
 ## ✨ Features
 
-- 🖊️ **Hardware Digitizer Precision**: Native Linux pointer events capturing stylus pressure (8192 levels), tilt, twist, and sub-pixel stylus coordinates.
+- 🖊️ **Hardware Digitizer Precision**: Native pointer events capturing stylus pressure (8192 levels), tilt, twist, and sub-pixel stylus coordinates across Linux Wayland and Windows (DirectManipulation / WM_POINTER).
 - 📐 **Decoupled Infinite Canvas**: Extensible canvas abstraction layer backed by Excalidraw, supporting hand-drawn strokes, geometric shapes, and technical diagrams.
 - 🎬 **Clean Recording Mode (`F10`)**: Instantly collapse all application chrome into an ultra-clean canvas with a floating pill widget for OBS Studio window capture.
 - 📦 **Offline Content-Addressed Bundles**: Self-contained project directory format with manifest v1 metadata, scene graphs, and SHA-256 deduplicated image assets.
 - 🏛️ **130+ Official Architecture Stencils**: Built-in official vector catalog featuring AWS, Google Cloud (GCP), Microsoft Azure, Kubernetes (`kubernetes/community`), and generic system design components. Drag and drop directly onto the canvas.
 - 🔍 **Live Hardware Stylus Inspector**: Real-time diagnostic panel displaying pen pressure bars, tilt angles, coordinates, and tablet hardware detection.
 - 🔒 **Deterministic & Fully Offline**: Zero cloud dependencies, self-hosted web fonts, context-isolated Electron sandbox, and zero telemetry.
+- 💻 **Multi-Platform Support**: First-class support for Fedora Linux (AppImage & unpacked binary) and Windows 10 & 11 (Portable `.exe` & NSIS installer).
 
 ---
 
@@ -22,9 +23,11 @@ Offline desktop infinite-canvas workspace optimized for technical explanations a
 
 ### Prerequisites
 
-- **Node.js**: v20 or later
+- **Node.js**: v20 or later (v22 LTS recommended)
 - **npm**: v10 or later
-- **Operating System**: Linux (Fedora 40/41/Rawhide recommended with GNOME Wayland)
+- **Operating Systems Supported**:
+  - **Linux**: Fedora 40/41/Rawhide (GNOME/KDE Wayland or X11), Ubuntu, Debian, Arch
+  - **Windows**: Windows 10 and Windows 11 (x64)
 
 ### Installation
 
@@ -55,12 +58,39 @@ npm run sync:stencils
 # Compile production bundles
 npm run build
 
+# --- Linux Packaging ---
 # Package unpacked Linux debug binary
 npm run build:linux:debug
 
 # Package portable standalone AppImage for Linux
 npm run build:linux:appimage
+
+# --- Windows Packaging ---
+# Package standalone portable executable for Windows 10 & 11 (single-file .exe)
+npm run build:win:portable
+
+# Package unpacked Windows debug directory
+npm run build:win:debug
+
+# Package Windows NSIS setup installer
+npm run build:win:nsis
+
+# Package all Windows targets
+npm run build:win:all
 ```
+
+---
+
+## 🏗️ Continuous Integration (CI)
+
+CanvasTube maintains automated multi-platform GitHub Actions workflows:
+
+| Workflow | Platform / Runner | Targets Built |
+|---|---|---|
+| **[Build Fedora (Debug)](.github/workflows/build-fedora-debug.yml)** | Official `fedora:41` container on `ubuntu-latest` | `canvastube-fedora-debug-x64.tar.gz`, `*.AppImage`, `*.rpm` |
+| **[Build Windows](.github/workflows/build-windows.yml)** | Native `windows-latest` (Windows 11 / Server 2022) | Portable `CanvasTube <version>.exe`, `CanvasTube Setup <version>.exe` |
+
+Both pipelines enforce type-checking (`tsc`), automated unit tests (`vitest`), and linting (`eslint`) before packaging binaries.
 
 ---
 
@@ -126,7 +156,7 @@ CanvasTube follows Electron security best practices:
 - [Product Roadmap](docs/ROADMAP.md)
 - [Implementation & Sprint Plan](docs/plan.md)
 - [Reference Implementations & Licenses](docs/REFERENCES.md)
-- [Linux Wayland & XP-Pen Tablet Testing Guide](docs/INPUT-TESTING.md)
+- [Tablet & Stylus Testing Guide (Linux Wayland & Windows)](docs/INPUT-TESTING.md)
 - [Architecture Stencils Guide](assets/icons/README.md)
 
 ---

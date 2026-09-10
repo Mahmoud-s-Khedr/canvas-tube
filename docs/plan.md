@@ -1,13 +1,15 @@
 # CanvasTube Master Project Plan & Progress Tracker
 
-> **CanvasTube**: An offline desktop infinite-canvas workspace optimized for explaining software engineering, system design, cloud computing, and technical documents while recording YouTube videos on Fedora Linux / Wayland with drawing tablets.
+> **CanvasTube**: An offline desktop infinite-canvas workspace optimized for explaining software engineering, system design, cloud computing, and technical documents while recording YouTube videos on Linux / Wayland and Windows 10/11 with drawing tablets.
 
 ---
 
 ## 📌 Project Overview & Principles
 
-- **Primary Development Platform**: Fedora Linux, Wayland compositor, libinput, XP-Pen Deco 01 V3 drawing tablet.
-- **Secondary Target Platforms**: macOS, Windows 11 (in subsequent releases).
+- **Primary Development Platforms**:
+  - Fedora Linux, Wayland compositor, libinput, XP-Pen Deco 01 V3 drawing tablet.
+  - Windows 10 & Windows 11 (x64) with Windows Ink / DirectManipulation.
+- **Secondary Target Platforms**: macOS (Apple Silicon / Intel).
 - **Core Design Rule**: 100% offline, local-first. No backend servers, no cloud storage, no telemetry, no accounts, no authentication.
 - **Storage Strategy**: Local directory bundles (`project.json`, `scene.json`, `assets/`, `documents/`, `cache/`) with SHA-256 content-addressed deduplicated assets.
 - **Canvas Decoupling**: Pure `@core` layer; canvas operations abstracted behind [`CanvasAdapter`](file:///home/mk/Projects/CV_projects/canvas-tube/src/core/canvas/canvas-adapter.ts) so features never depend directly on Excalidraw internals.
@@ -32,7 +34,7 @@
 | **Phase 2** | **Technical Stencils & Camera Bookmarks** | `[/]` In Progress | Sprint 2 | 75% |
 | **Phase 3** | **PDF Annotation & Technical Documents** | `[ ]` Planned | Sprint 3 | 0% |
 | **Phase 4** | **Recording, OBS Studio & Production Export** | `[ ]` Planned | Sprint 4 | 0% |
-| **Phase 5** | **Packaging, Hardening & CI Pipeline** | `[/]` In Progress | Sprint 5 | 20% |
+| **Phase 5** | **Packaging, Hardening & Multi-Platform CI** | `[/]` In Progress | Sprint 5 | 75% |
 
 ---
 
@@ -102,7 +104,7 @@
   - [ ] Custom user stencil import (drag SVG folder to add custom icon pack).
 - [ ] **Camera Bookmarks & Presenter Tour Mode**
   - [ ] Camera Bookmark data model (`id`, `title`, `bounds`, `zoom`, `orderIndex`).
-  - [ ] "Add Camera Bookmark" button in toolbar / shortcut (`Ctrl+B`).
+  - [ ] \"Add Camera Bookmark\" button in toolbar / shortcut (`Ctrl+B`).
   - [ ] Slide-out Bookmarks Drawer showing visual thumbnail previews of saved viewpoints.
   - [ ] Smooth animated camera panning transitions between bookmarks (`PageDown` / `PageUp`, `Alt + [1-9]`).
   - [ ] Presenter timeline bar indicating current step in a video explanation.
@@ -118,15 +120,11 @@
 
 - [ ] **Offline PDF Processing Engine**
   - [ ] Integrate `pdfjs-dist` in an offline worker process (no external telemetry).
-  - [ ] PDF import handler storing original document in `documents/<hash>.pdf`.
-  - [ ] Render PDF pages to crisp multi-resolution vector/canvas layers.
-- [ ] **Canvas-Pinned Slide Deck Mode**
-  - [ ] Slide-strip navigation dock (dockable left or bottom).
-  - [ ] Pin single pages or continuous horizontal slide deck onto infinite canvas.
-  - [ ] Locked background frames preventing accidental drag while drawing.
-- [ ] **Handwritten Annotation Layering**
-  - [ ] Separate annotation layer over PDF bounds.
-  - [ ] High-contrast highlighter tool with adjustable opacity.
+  - [ ] PDF document import action placing files into `documents/` bundle subdirectory.
+  - [ ] Multi-page slide-strip dock for jumping across presentation slides.
+- [ ] **Canvas-Pinned Slides & Freehand Inking**
+  - [ ] Pinning PDF slides or research papers onto the infinite canvas as locked reference frames.
+  - [ ] Freehand stylus annotation layered over PDF pages without raster degradation.
   - [ ] Export annotated PDF preserving both source document and handwritten vector ink.
 - [ ] **Code Snippet Embedding**
   - [ ] Syntax-highlighted code block shape (using Shiki / offline Monaco).
@@ -145,7 +143,7 @@
   - [ ] 4K / 8K ultra-high-resolution PNG rasterizer.
   - [ ] Vector SVG export with embedded fonts and embedded images.
   - [ ] Bounded region export (select rectangle and export image).
-  - [ ] "Copy to Clipboard as PNG" shortcut (`Ctrl+Shift+C`).
+  - [ ] \"Copy to Clipboard as PNG\" shortcut (`Ctrl+Shift+C`).
 - [ ] **YouTube Video Chapter Generation**
   - [ ] Session timer tracking time spent per Camera Bookmark during recording.
   - [ ] One-click export of `chapters.txt` formatted for YouTube video descriptions (e.g. `00:00 - Introduction`, `03:45 - Cache Invalidation`).
@@ -153,19 +151,24 @@
 ---
 
 ### Phase 5: Packaging, Hardening & CI Pipeline
-*Goal: Production packages for Fedora Linux, automated testing pipelines, and macOS / Windows installers.*
+*Goal: Production packages for Fedora Linux and Windows 10/11, automated testing pipelines, and multi-platform CI.*
 
-- [/] **Linux Packaging & CI**
+- [x] **Linux Packaging & CI**
   - [x] Configure `electron-builder` configuration for Linux targets (`electron-builder.yml`).
   - [x] Add `npm run build:linux:debug` script for unpacked Linux binary generation.
   - [x] Implement GitHub Actions CI workflow ([`.github/workflows/build-fedora-debug.yml`](file:///home/mk/Projects/CV_projects/canvas-tube/.github/workflows/build-fedora-debug.yml)) running inside official `fedora:41` container to build and test the debug distribution.
-  - [ ] Flatpak manifest with Wayland permissions and local file access.
-  - [ ] Fedora RPM package release automation.
-  - [x] AppImage standalone executable.
+  - [x] AppImage standalone executable (`npm run build:linux:appimage`).
   - [x] Automated AppImage generation and upload in CI workflow (`canvastube-fedora-appimage` artifact).
+  - [x] Optional RPM packaging step via `build_rpm` workflow dispatch input.
   - [x] CanvasTube brand desktop icons in `build/icons/`.
-- [ ] **Windows & macOS Support**
-  - [ ] Windows 11 `.msi` / `.exe` installer with Windows Ink / Pointer API testing.
+- [x] **Windows 10 & 11 Support**
+  - [x] Configure `win` and `nsis` sections in `electron-builder.yml`.
+  - [x] Generate Windows multi-resolution icon `build/icon.ico`.
+  - [x] Portable standalone executable (`npm run build:win:portable` producing `CanvasTube <ver>.exe`).
+  - [x] NSIS Setup installer configuration (`npm run build:win:nsis`).
+  - [x] Dedicated GitHub Actions CI workflow ([`.github/workflows/build-windows.yml`](file:///home/mk/Projects/CV_projects/canvas-tube/.github/workflows/build-windows.yml)) on `windows-latest`.
+  - [x] Update `InputInspector` host detection for Windows PointerEvents / DirectManipulation.
+- [ ] **macOS Support**
   - [ ] macOS `.dmg` with Apple Silicon (arm64) and Intel (x64) universal builds.
 - [ ] **Performance Profiling & Large Canvas Optimization**
   - [ ] Virtualized rendering benchmark for scenes with >5,000 elements.
@@ -178,32 +181,8 @@
 
 ```
 Sprint 1 (Weeks 1-2): Phase 0 & Phase 1 Vertical Slice ─────► [COMPLETED]
-Sprint 2 (Weeks 3-4): Phase 2 Architecture Stencils & Camera Tour
-Sprint 3 (Weeks 5-6): Phase 3 PDF Annotation & Document Engine
-Sprint 4 (Weeks 7-8): Phase 4 OBS Integration & Production Exports
-Sprint 5 (Weeks 9-10): Phase 5 Packaging (Flatpak/RPM/DMG) & Polish
+Sprint 2 (Weeks 3-4): Official Stencils & Windows/Linux CI ─► [COMPLETED]
+Sprint 3 (Weeks 5-6): Camera Bookmarks & Scene Tour ────────► [CURRENT]
+Sprint 4 (Weeks 7-8): PDF Slide Inking & Annotation ────────► [UPCOMING]
+Sprint 5 (Weeks 9-10): OBS Integration & Production Polish ─► [UPCOMING]
 ```
-
----
-
-## 🔍 Risk Register & Mitigation Strategy
-
-| Risk ID | Description | Impact | Likelihood | Mitigation Strategy |
-|---|---|---|---|---|
-| **RSK-01** | Wayland compositor differences (GNOME Mutter vs. KDE KWin vs. Hyprland) | Medium | Medium | Automated Ozone platform flags; developer `InputInspector` for instant telemetry; fallback XWayland switch. |
-| **RSK-02** | Excalidraw upstream dependency breakage or API shifts | High | Low | Canvas operations strictly isolated behind `CanvasAdapter`; pin exact minor version in `package.json`. |
-| **RSK-03** | High memory usage when loading multi-page PDF documents | High | Medium | Lazy page rendering in background worker; cache only active viewport pages at high resolution. |
-| **RSK-04** | License contamination from external references (Rnote GPL, tldraw proprietary) | Critical | Low | Strict clean-room architectural reference policy; no foreign source code introduced; automated license scans. |
-| **RSK-05** | Offline font failure on clean Linux systems without internet | High | Low | Vendored font files directly inside `src/renderer/public/fonts/`; tested without network interface. |
-
----
-
-## 🧪 QA & Verification Gates
-
-Before tagging any version release, all 5 QA gates must pass:
-
-1. **Gate 1 (Compilation)**: `npm run typecheck` produces 0 errors across main, preload, and renderer targets.
-2. **Gate 2 (Automated Tests)**: `npm run test` passes all unit tests for manifest validation, asset hashing, and registries.
-3. **Gate 3 (Code Quality)**: `npm run lint` passes with 0 warnings and 0 errors.
-4. **Gate 4 (Build Verification)**: `npm run build` generates all bundles in `out/`, and `npm run build:linux:debug` generates Linux debug binaries in `dist/linux-unpacked`.
-5. **Gate 5 (Hardware QA)**: Complete the 8-point manual checklist in [`docs/INPUT-TESTING.md`](file:///home/mk/Projects/CV_projects/canvas-tube/docs/INPUT-TESTING.md) using the XP-Pen Deco 01 V3 on Fedora Wayland.

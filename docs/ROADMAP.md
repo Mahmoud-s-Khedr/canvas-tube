@@ -1,6 +1,6 @@
 # CanvasTube Product & Engineering Roadmap
 
-This document outlines the phased development roadmap for **CanvasTube**, transforming the core technical explanation canvas into a world-class production workspace for technical video creators and educators.
+This document outlines the phased development roadmap for **CanvasTube**, transforming the core technical explanation canvas into a world-class production workspace for technical video creators and educators on Linux and Windows.
 
 ---
 
@@ -51,12 +51,18 @@ Foundation  Canvas &    Stencils &   PDF Workflow Production
 - [x] **Drag-and-Drop to Canvas** (HTML5 drag-and-drop projecting directly onto infinite canvas scene coordinates).
 - [x] Automated upstream sync script (`scripts/sync-official-icons.mjs` / `npm run sync:stencils`).
 
-### 2. Camera Bookmarks & Scene Tour (Next Milestone)
+### 2. Multi-Platform Packaging & Continuous Integration (Completed)
+- [x] **Linux Distribution Pipeline**: Fedora 41 containerized CI workflow building AppImage, debug archives, and optional RPM packages.
+- [x] **Windows 10 & 11 Pipeline**: Native GitHub Actions CI workflow on `windows-latest` generating Portable `.exe` and NSIS setup installer.
+- [x] **Windows Pointer Events Integration**: Diagnostic recognition of Windows DirectManipulation / WM_POINTER events in the Stylus Inspector.
+- [x] Multi-resolution Windows application icon (`build/icon.ico`).
+
+### 3. Camera Bookmarks & Scene Tour (Next Milestone)
 - [ ] Saved camera viewpoints (`CameraBookmark`: name, bounds, zoom, description).
 - [ ] Visual timeline/drawer to jump smoothly between technical diagram sections while speaking.
 - [ ] Keyboard navigation (`PageDown`/`PageUp` or `Alt + [1-9]`) to pan the camera between architecture components.
 
-### 3. Connector & Arrow Enhancements
+### 4. Connector & Arrow Enhancements
 - [ ] Smart orthogonal routing around architecture boxes (drawing inspiration from Draw.io / wire routers).
 - [ ] Bidirectional and labeled data-flow arrows with protocol tags (e.g. `gRPC`, `HTTPS`, `Kafka Topic`).
 - [ ] Magnetic snap-to-anchor points on architecture stencils.

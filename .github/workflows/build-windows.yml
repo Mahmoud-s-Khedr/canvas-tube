@@ -1,0 +1,57 @@
+name: Build Windows (Win 10 & 11)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows 10/11 Executable & Installer
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run Unit Tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Compile and Package Windows Binaries
+        run: |
+          npm run build
+          npx electron-builder --win portable nsis --publish never
+
+      - name: Upload Windows Portable Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-windows-portable-x64
+          path: dist/CanvasTube *.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows NSIS Setup Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-windows-setup-x64
+          path: dist/CanvasTube Setup *.exe
+          if-no-files-found: error
+          retention-days: 14

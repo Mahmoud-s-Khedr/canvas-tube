@@ -1,16 +1,17 @@
 # CanvasTube System Architecture Specification
 
-> **Version**: 0.2.0  
-> **Status**: Approved & Implemented (Foundation, Canvas Slice, Official Cloud Stencils)  
-> **Target OS**: Fedora Linux (x86_64 / aarch64), Wayland Compositor (GNOME / KDE)  
-> **Digitizer Target**: XP-Pen Deco 01 V3 (8192 Pressure Levels, Tilt, Sub-pixel Coordinates)
+> **Version**: 0.3.0  
+> **Status**: Approved & Implemented (Multi-Platform: Linux Wayland & Windows 10/11)  
+> **Primary Target OS**: Fedora Linux (x86_64 / aarch64), Wayland Compositor (GNOME / KDE)  
+> **Secondary Target OS**: Windows 10 & Windows 11 (x64)  
+> **Digitizer Target**: XP-Pen Deco 01 V3 (8192 Pressure Levels, Tilt, Sub-pixel Coordinates), Wacom, and Windows Ink digitizers
 
 ---
 
 ## 1. High-Level Architecture Overview
 
 CanvasTube is engineered around four core decoupled subsystems:
-1. **Desktop Host Process (Electron Main)**: Native window lifecycle, Linux Wayland display server configuration, hardware digitizer flag negotiation, and atomic local-filesystem I/O.
+1. **Desktop Host Process (Electron Main)**: Native window lifecycle, Linux Wayland display server configuration, Windows DirectManipulation pointer integration, and atomic local-filesystem I/O.
 2. **Preload Security Bridge**: Secure, context-isolated bridge establishing a strongly-typed IPC interface (`DesktopApi`) without exposing Node.js runtime primitives to the DOM.
 3. **Core Domain Layer (`@core`)**: Pure TypeScript models for project manifest management, SHA-256 content-addressed asset deduplication, vector stencil registry, and abstract canvas contracts.
 4. **Presentation & Canvas Shell (React Renderer)**: Decoupled UI housing the top controls, hardware stylus inspector, collapsible architecture stencil drawer, and canvas adapter.
@@ -19,34 +20,35 @@ CanvasTube is engineered around four core decoupled subsystems:
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        Renderer Process (DOM)                          │
 │                                                                        │
-│   ┌────────────────┐ ┌───────────────────┐ ┌──────────────────────┐   │
-│   │   TopToolbar   │ │   IconSidebar     │ │    InputInspector    │   │
-│   └───────┬────────┘ └────────┬──────────┘ └──────────┬───────────┘   │
+│   ┌────────────────┐ ┌───────────────────┐ ┌───────────────────────┐   │
+│   │   TopToolbar   │ │    IconSidebar    │ │     InputInspector    │   │
+│   └───────┬────────┘ └─────────┬─────────┘ └───────────┬───────────┘   │
 │           │                   │                       │               │
 │           ▼                   ▼                       ▼               │
-│   ┌───────────────────────────────────────────────────────────────┐   │
-│   │              CanvasView & CanvasAdapter Interface             │   │
-│   │             (e.g., ExcalidrawCanvasAdapter.ts)                │   │
-│   └───────────────────────────┬───────────────────────────────────┘   │
-│                               │                                       │
-│   ┌───────────────────────────▼───────────────────────────────────┐   │
-│   │                 Pure Domain Services (@core)                  │   │
-│   │   ProjectService  │  AssetRegistry  │  IconRegistry / Loader  │   │
-│   └───────────────────────────┬───────────────────────────────────┘   │
-└───────────────────────────────┼───────────────────────────────────────┘
-                                │ Typed IPC (window.desktopApi)
-┌───────────────────────────────▼───────────────────────────────────────┐
-│                      Preload Security Boundary                        │
-│            contextIsolation: true  │  sandbox: true                   │
-└───────────────────────────────┬───────────────────────────────────────┘
-                                │ Electron IPC Channels
-┌───────────────────────────────▼───────────────────────────────────────┐
-│                     Main Process (Node.js/Electron)                   │
+│   ┌────────────────────────────────────────────────────────────────┐   │
+│   │              CanvasView & CanvasAdapter Interface              │   │
+│   │             (e.g., ExcalidrawCanvasAdapter.ts)                 │   │
+│   └────────────────────────────┬───────────────────────────────────┘   │
+│                                │                                       │
+│   ┌────────────────────────────▼───────────────────────────────────┐   │
+│   │                 Pure Domain Services (@core)                   │   │
+│   │   ProjectService  │  AssetRegistry  │  IconRegistry / Loader   │   │
+│   └────────────────────────────┬───────────────────────────────────┘   │
+└────────────────────────────────┼───────────────────────────────────────┘
+                                 │ Typed IPC (window.desktopApi)
+┌────────────────────────────────▼───────────────────────────────────────┐
+│                      Preload Security Boundary                         │
+│            contextIsolation: true  │  sandbox: true                    │
+└────────────────────────────────┬───────────────────────────────────────┘
+                                 │ Electron IPC Channels
+┌────────────────────────────────▼───────────────────────────────────────┐
+│                     Main Process (Node.js/Electron)                    │
 │                                                                        │
-│   - Wayland Ozone Platform Flags & libinput Stylus Calibration        │
-│   - Native Folder Dialogs (Open, Save As)                             │
-│   - Atomic Local Bundle Persistence (project.json, scene.json)        │
-│   - Asset SHA-256 Ingestion & Content-Addressed Store                 │
+│   - Linux: Wayland Ozone Platform Flags & libinput Stylus Calibration  │
+│   - Windows: DirectManipulation & WM_POINTER Hardware Events          │
+│   - Native Folder Dialogs (Open, Save As)                              │
+│   - Atomic Local Bundle Persistence (project.json, scene.json)         │
+│   - Asset SHA-256 Ingestion & Content-Addressed Store                  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -160,12 +162,15 @@ ProjectDirectory/
 
 ## 5. Input Pipeline & Drawing Tablet Integration
 
-Hardware drawing tablets on Linux Wayland emit `W3C PointerEvents`. The application captures and inspects:
+Hardware drawing tablets on Linux and Windows emit `W3C PointerEvents`. The application captures and inspects:
 
 1. **Pointer Type**: Differentiates between `'mouse'`, `'pen'` (drawing stylus), and `'touch'`.
 2. **Pressure Sensitivity**: Normalized float from `0.0` (hover/no contact) to `1.0` (maximum pressure).
 3. **Stylus Tilt**: `tiltX` and `tiltY` angles (degrees between -90 and +90).
 4. **Twist & Buttons**: Stylus barrel buttons and eraser tip detection.
+5. **Platform Driver Channels**:
+   - **Linux**: `libinput` kernel driver via Wayland tablet protocol.
+   - **Windows**: Windows Ink / DirectManipulation translating hardware digitizers directly to Chromium `WM_POINTER` events.
 
 The `InputInspector` component intercepts pointer events on the container capture phase before canvas tools handle strokes, allowing creators to verify tablet calibration and pressure responsiveness in real time.
 
@@ -203,3 +208,17 @@ CanvasTube bundles 133+ vector architecture stencils directly into the offline a
   1. The client cursor coordinates `(e.clientX, e.clientY)` are converted to infinite-canvas scene coordinates via `adapter.clientToScene({ x, y })`.
   2. The SVG data is registered with `adapter.addFile({ id, mimeType: 'image/svg+xml', dataURL })`.
   3. An `image` element is added at the exact drop coordinate centered under the cursor via `adapter.addObject()`.
+
+---
+
+## 8. Multi-Platform Packaging & Continuous Integration
+
+CanvasTube provides cross-platform packaging with automated quality verification:
+
+### Build Artifacts
+- **Linux**: Standalone `.AppImage`, unpacked debug directory, and native Fedora `.rpm`.
+- **Windows**: Portable single-file executable (`CanvasTube <version>.exe`), NSIS installer (`CanvasTube Setup <version>.exe`), and unpacked debug directory.
+
+### GitHub Actions CI Architecture
+- **Fedora 41 Container Job** ([`.github/workflows/build-fedora-debug.yml`](../.github/workflows/build-fedora-debug.yml)): Runs in an official Fedora 41 container to validate dependencies against Fedora glibc, building Linux AppImage, debug archives, and RPMs.
+- **Windows 10/11 Job** ([`.github/workflows/build-windows.yml`](../.github/workflows/build-windows.yml)): Runs on GitHub's native `windows-latest` runner (Windows 11 / Server 2022) to build native Windows Portable executables and NSIS installers.

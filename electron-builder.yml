@@ -22,3 +22,24 @@ linux:
   category: Graphics
   synopsis: Offline technical explanation workspace
   description: Offline desktop infinite-canvas workspace optimized for technical explanations and video recording
+win:
+  executableName: CanvasTube
+  icon: build/icon.ico
+  target:
+    - target: portable
+      arch:
+        - x64
+    - target: nsis
+      arch:
+        - x64
+    - target: dir
+      arch:
+        - x64
+  category: Graphics
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: CanvasTube
