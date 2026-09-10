@@ -11,7 +11,8 @@ import {
   Minimize2,
   Code,
   Bookmark,
-  BookmarkPlus
+  BookmarkPlus,
+  Download
 } from 'lucide-react'
 
 interface TopToolbarProps {
@@ -35,6 +36,7 @@ interface TopToolbarProps {
   onImportImage: () => void
   onImportPdf: () => void
   onOpenCodeSnippetModal: () => void
+  onOpenExport: () => void
   onToggleDevTools: () => void
 }
 
@@ -59,6 +61,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   onImportImage,
   onImportPdf,
   onOpenCodeSnippetModal,
+  onOpenExport,
   onToggleDevTools
 }) => {
   if (isRecordingMode) {
@@ -177,7 +180,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         </div>
       </div>
 
-      {/* Center: File, Assets, PDF & Code Snippet Actions */}
+      {/* Center: File, Assets, PDF, Code Snippet & Export Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <button
           onClick={onNewProject}
@@ -241,6 +244,20 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         >
           <Terminal size={15} color="#10b981" />
           <span>Code Card</span>
+        </button>
+
+        <button
+          onClick={onOpenExport}
+          style={{
+            ...buttonStyle,
+            backgroundColor: '#1e3a8a33',
+            borderColor: '#3b82f6',
+            color: '#93c5fd'
+          }}
+          title="Production Diagram Export (PNG, 4K/8K, SVG, Marquee) [Ctrl+Shift+E]"
+        >
+          <Download size={15} color="#60a5fa" />
+          <span>Export</span>
         </button>
 
         {hasDocument && (

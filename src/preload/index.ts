@@ -5,6 +5,8 @@ import {
   SaveProjectResult,
   ImportAssetResult,
   ImportPdfResult,
+  SaveExportFileOptions,
+  SaveExportFileResult,
   SystemInfo
 } from '../core/desktop/desktop-api'
 import { CanvasProjectBundle } from '../core/project/project-manifest'
@@ -36,6 +38,18 @@ const desktopApi: DesktopApi = {
 
   async selectDirectory(): Promise<string | null> {
     return ipcRenderer.invoke('dialog:selectDirectory')
+  },
+
+  async saveExportFile(options: SaveExportFileOptions): Promise<SaveExportFileResult> {
+    return ipcRenderer.invoke('export:saveFile', options)
+  },
+
+  async copyImageToClipboard(dataUrl: string): Promise<boolean> {
+    return ipcRenderer.invoke('clipboard:writeImage', dataUrl)
+  },
+
+  async copyTextToClipboard(text: string): Promise<boolean> {
+    return ipcRenderer.invoke('clipboard:writeText', text)
   },
 
   async getSystemInfo(): Promise<SystemInfo> {

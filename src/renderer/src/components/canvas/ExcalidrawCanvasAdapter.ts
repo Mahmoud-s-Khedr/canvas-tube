@@ -8,6 +8,12 @@ import {
   CanvasToolType,
   CanvasPointerSnapshot
 } from '@core/canvas/canvas-adapter'
+import {
+  CanvasExportConfig,
+  CanvasExportResult,
+  ExportScope,
+  calculateExportDimensions
+} from '@core/export/export-types'
 import { interpolateCamera } from '@core/canvas/camera-animation'
 import type {
   ExcalidrawImperativeAPI,
@@ -15,7 +21,12 @@ import type {
   BinaryFiles
 } from '@excalidraw/excalidraw/types'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
-import { convertToExcalidrawElements } from '@excalidraw/excalidraw'
+import {
+  convertToExcalidrawElements,
+  exportToCanvas,
+  exportToSvg,
+  getCommonBounds
+} from '@excalidraw/excalidraw'
 
 export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   public readonly name = 'ExcalidrawCanvasAdapter'
@@ -400,6 +411,198 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   public addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void {
     if (!this.api) return
     this.api.addFiles([file as any])
+  }
+
+  public getElementsCount(scope: 'all' | 'selection' = 'all'): number {
+    if (!this.api) return 0
+    const nonDeleted = this.api.getSceneElements().filter((el) => !el.isDeleted)
+    if (scope === 'selection') {
+      const selected = new Set(this.getSelection())
+      return nonDeleted.filter((el) => selected.has(el.id)).length
+    }
+    return nonDeleted.length
+  }
+
+  public getExportBounds(scope: ExportScope, customBounds?: Bounds): Bounds | null {
+    if (scope === 'custom') {
+      return customBounds || null
+    }
+
+    if (scope === 'viewport') {
+      const camera = this.getCamera()
+      const width = window.innerWidth / camera.zoom
+      const height = window.innerHeight / camera.zoom
+      const x = -camera.x / camera.zoom
+      const y = -camera.y / camera.zoom
+      return {
+        x: Math.round(x),
+        y: Math.round(y),
+        width: Math.max(1, Math.round(width)),
+        height: Math.max(1, Math.round(height))
+      }
+    }
+
+    if (!this.api) return null
+    const nonDeleted = this.api.getSceneElements().filter((el) => !el.isDeleted)
+    if (nonDeleted.length === 0) return null
+
+    let targetElements = nonDeleted
+    if (scope === 'selection') {
+      const selected = new Set(this.getSelection())
+      targetElements = nonDeleted.filter((el) => selected.has(el.id))
+      if (targetElements.length === 0) return null
+    }
+
+    const [minX, minY, maxX, maxY] = getCommonBounds(targetElements)
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+      return null
+    }
+
+    return {
+      x: Math.round(minX),
+      y: Math.round(minY),
+      width: Math.max(1, Math.round(maxX - minX)),
+      height: Math.max(1, Math.round(maxY - minY))
+    }
+  }
+
+  public async exportCanvas(config: CanvasExportConfig): Promise<CanvasExportResult> {
+    if (!this.api) {
+      throw new Error('Canvas API is not ready')
+    }
+
+    const allElements = this.api.getSceneElements().filter((el) => !el.isDeleted)
+    let exportElements = allElements
+    let exportingFrame: any = null
+
+    if (config.scope === 'selection') {
+      const selectedIds = new Set(this.getSelection())
+      exportElements = allElements.filter((el) => selectedIds.has(el.id))
+      if (exportElements.length === 0) {
+        throw new Error('No elements are currently selected for export')
+      }
+    } else if (config.scope === 'viewport' || config.scope === 'custom') {
+      const bounds = this.getExportBounds(config.scope, config.customBounds)
+      if (!bounds) {
+        throw new Error('Unable to determine bounded region for export')
+      }
+      exportingFrame = {
+        type: 'frame',
+        id: `__export_frame_${Date.now()}`,
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height
+      }
+    }
+
+    if (exportElements.length === 0 && !exportingFrame) {
+      throw new Error('Canvas scene is empty. Nothing to export.')
+    }
+
+    let baseWidth = 800
+    let baseHeight = 600
+
+    if (exportingFrame) {
+      baseWidth = exportingFrame.width
+      baseHeight = exportingFrame.height
+    } else {
+      const bounds = this.getExportBounds(config.scope === 'selection' ? 'selection' : 'all')
+      if (bounds) {
+        baseWidth = bounds.width
+        baseHeight = bounds.height
+      }
+    }
+
+    const { width: targetWidth, height: targetHeight, scale: targetScale } =
+      calculateExportDimensions(
+        baseWidth,
+        baseHeight,
+        config.resolutionPreset,
+        config.scale,
+        config.customWidth
+      )
+
+    const exportBackground = config.backgroundMode !== 'transparent'
+    const exportWithDarkMode = config.backgroundMode === 'dark'
+    const viewBackgroundColor =
+      config.backgroundColor || (config.backgroundMode === 'light' ? '#ffffff' : '#121212')
+    const exportPadding =
+      config.scope === 'viewport' || config.scope === 'custom' ? 0 : (config.padding ?? 16)
+
+    const currentAppState = this.api.getAppState()
+
+    if (config.format === 'png') {
+      const canvas = await exportToCanvas({
+        elements: exportElements,
+        appState: {
+          ...currentAppState,
+          exportBackground,
+          viewBackgroundColor,
+          exportWithDarkMode,
+          exportScale: targetScale
+        },
+        files: this.api.getFiles(),
+        exportPadding,
+        exportingFrame,
+        getDimensions: () => ({
+          width: targetWidth,
+          height: targetHeight,
+          scale: targetScale
+        })
+      })
+
+      const dataUrl = canvas.toDataURL('image/png')
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b: Blob | null) => {
+          if (b) resolve(b)
+          else reject(new Error('Failed to generate PNG blob'))
+        }, 'image/png')
+      })
+
+      return {
+        format: 'png',
+        blob,
+        dataUrl,
+        width: canvas.width,
+        height: canvas.height,
+        scale: targetScale
+      }
+    }
+
+    // SVG Export
+    const svg = await exportToSvg({
+      elements: exportElements,
+      appState: {
+        ...currentAppState,
+        exportBackground,
+        viewBackgroundColor,
+        exportWithDarkMode,
+        exportScale: targetScale,
+        exportPadding
+      },
+      files: this.api.getFiles(),
+      exportPadding,
+      exportingFrame
+    })
+
+    if (!svg.getAttribute('xmlns')) {
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    }
+
+    const svgString = new XMLSerializer().serializeToString(svg)
+    const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
+    const outWidth = parseInt(svg.getAttribute('width') || String(targetWidth), 10)
+    const outHeight = parseInt(svg.getAttribute('height') || String(targetHeight), 10)
+
+    return {
+      format: 'svg',
+      svgString,
+      dataUrl,
+      width: outWidth,
+      height: outHeight,
+      scale: targetScale
+    }
   }
 
   public destroy(): void {

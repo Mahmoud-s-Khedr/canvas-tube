@@ -5,7 +5,7 @@ import {
   DocumentEntry,
   createDefaultManifest
 } from '@core/project/project-manifest'
-import { CanvasPointerSnapshot } from '@core/canvas/canvas-adapter'
+import { CanvasPointerSnapshot, Bounds } from '@core/canvas/canvas-adapter'
 import {
   createBookmark,
   updateBookmarkCamera,
@@ -25,7 +25,10 @@ import { DocumentSlideDock } from './components/documents/DocumentSlideDock'
 import { CodeSnippetModal } from './components/code/CodeSnippetModal'
 import { BookmarksDrawer } from './components/bookmarks/BookmarksDrawer'
 import { PresenterTourBar } from './components/bookmarks/PresenterTourBar'
+import { ExportModal } from './components/export/ExportModal'
+import { MarqueeSelector } from './components/export/MarqueeSelector'
 import { PdfService } from './services/pdf-service'
+import { CheckCircle2, AlertTriangle, Info } from 'lucide-react'
 
 export const App: React.FC = () => {
   const adapter = useMemo(() => new ExcalidrawCanvasAdapter(), [])
@@ -50,6 +53,29 @@ export const App: React.FC = () => {
 
   // Code Snippet Modal state
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false)
+
+  // Production Export Pipeline state
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false)
+  const [customExportBounds, setCustomExportBounds] = useState<Bounds | null>(null)
+
+  // Notification Toast state
+  const [toast, setToast] = useState<{
+    id: number
+    message: string
+    type: 'info' | 'success' | 'warning'
+  } | null>(null)
+
+  const showToast = useCallback(
+    (message: string, type: 'info' | 'success' | 'warning' = 'info') => {
+      const id = Date.now()
+      setToast({ id, message, type })
+      setTimeout(() => {
+        setToast((current) => (current?.id === id ? null : current))
+      }, 3500)
+    },
+    []
+  )
 
   // Listen to pointer events from adapter
   useEffect(() => {
@@ -81,6 +107,7 @@ export const App: React.FC = () => {
     setIsDocumentDockOpen(false)
     setIsBookmarksDrawerOpen(false)
     setActiveBookmarkIndex(null)
+    setCustomExportBounds(null)
     adapter.deserialize({ elements: [], appState: {} })
   }, [adapter])
 
@@ -92,6 +119,7 @@ export const App: React.FC = () => {
       setManifest(result.bundle.manifest)
       adapter.deserialize(result.bundle.sceneData)
       setActiveBookmarkIndex(null)
+      setCustomExportBounds(null)
 
       // Restore PDF document if present in opened project
       if (result.bundle.manifest.documents.length > 0) {
@@ -130,6 +158,7 @@ export const App: React.FC = () => {
       })
       if (saveAsResult?.success && saveAsResult.path) {
         setProjectDir(saveAsResult.path)
+        showToast('Project saved successfully!', 'success')
       }
       return
     }
@@ -139,9 +168,11 @@ export const App: React.FC = () => {
       sceneData
     })
     if (!saveResult.success) {
-      alert(`Save failed: ${saveResult.error || 'Unknown error'}`)
+      showToast(`Save failed: ${saveResult.error || 'Unknown error'}`, 'warning')
+    } else {
+      showToast('Project saved successfully!', 'success')
     }
-  }, [adapter, manifest, projectDir])
+  }, [adapter, manifest, projectDir, showToast])
 
   const handleSaveProjectAs = useCallback(async () => {
     if (!window.desktopApi?.saveProjectAs) return
@@ -152,8 +183,54 @@ export const App: React.FC = () => {
     })
     if (saveAsResult?.success && saveAsResult.path) {
       setProjectDir(saveAsResult.path)
+      showToast('Project saved as new file!', 'success')
     }
-  }, [adapter, manifest])
+  }, [adapter, manifest, showToast])
+
+  // Quick clipboard copy action (Ctrl+Shift+C)
+  const handleQuickClipboardCopy = useCallback(async () => {
+    try {
+      const selectionCount = adapter.getElementsCount('selection')
+      const totalCount = adapter.getElementsCount('all')
+      if (totalCount === 0) {
+        showToast('Canvas is empty. Nothing to copy.', 'warning')
+        return
+      }
+
+      const scope = selectionCount > 0 ? 'selection' : 'viewport'
+      const result = await adapter.exportCanvas({
+        format: 'png',
+        scope,
+        resolutionPreset: '2x',
+        backgroundMode: 'dark',
+        padding: 16
+      })
+
+      let copiedSuccessfully = false
+      if (window.desktopApi?.copyImageToClipboard && result.dataUrl) {
+        copiedSuccessfully = await window.desktopApi.copyImageToClipboard(result.dataUrl)
+      }
+
+      if (navigator.clipboard && result.blob) {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': result.blob })])
+          copiedSuccessfully = true
+        } catch {
+          // Handled via native IPC
+        }
+      }
+
+      if (copiedSuccessfully) {
+        const desc = selectionCount > 0 ? `${selectionCount} selected element(s)` : 'active canvas'
+        showToast(`Copied ${desc} to clipboard as PNG (${result.width}×${result.height}px)!`, 'success')
+      } else {
+        showToast('Failed to copy diagram to clipboard', 'warning')
+      }
+    } catch (err) {
+      console.error('[handleQuickClipboardCopy] Error:', err)
+      showToast(`Copy failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'warning')
+    }
+  }, [adapter, showToast])
 
   // Bookmark handlers
   const handleAddBookmark = useCallback(
@@ -170,8 +247,9 @@ export const App: React.FC = () => {
         }
       }))
       setActiveBookmarkIndex(count)
+      showToast(`Bookmark "${newBookmark.name}" created`, 'success')
     },
-    [adapter, manifest.presentation.cameraBookmarks.length]
+    [adapter, manifest.presentation.cameraBookmarks.length, showToast]
   )
 
   const handleJumpToBookmark = useCallback(
@@ -213,8 +291,9 @@ export const App: React.FC = () => {
           cameraBookmarks: updateBookmarkCamera(prev.presentation.cameraBookmarks, id, camera)
         }
       }))
+      showToast('Updated bookmark viewpoint to current camera', 'info')
     },
-    [adapter]
+    [adapter, showToast]
   )
 
   const handleRenameBookmark = useCallback((id: string, name: string) => {
@@ -300,7 +379,8 @@ export const App: React.FC = () => {
       height: 300,
       fileId
     })
-  }, [adapter])
+    showToast('Image inserted onto canvas', 'success')
+  }, [adapter, showToast])
 
   // PDF import handler
   const handleImportPdf = useCallback(async () => {
@@ -327,11 +407,12 @@ export const App: React.FC = () => {
       setActiveDocument(updatedDoc)
       setActivePdfDoc(pdfDoc)
       setIsDocumentDockOpen(true)
+      showToast(`Loaded "${updatedDoc.filename}" (${pdfDoc.numPages} slides)`, 'success')
     } catch (err) {
       console.error('[App] Failed to load imported PDF:', err)
-      alert('Failed to parse and load PDF document.')
+      showToast('Failed to parse and load PDF document.', 'warning')
     }
-  }, [])
+  }, [showToast])
 
   // Drag-and-drop handler for dropped PDF slide pages
   const handleDropPdfPage = useCallback(
@@ -366,11 +447,12 @@ export const App: React.FC = () => {
             pageNumber
           }
         })
+        showToast(`Slide ${pageNumber} placed onto canvas`, 'success')
       } catch (err) {
         console.error('[App] Failed placing dropped slide page:', err)
       }
     },
-    [activePdfDoc, activeDocument, adapter]
+    [activePdfDoc, activeDocument, adapter, showToast]
   )
 
   const handleToggleDevTools = useCallback(() => {
@@ -386,6 +468,20 @@ export const App: React.FC = () => {
         (target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
           target.isContentEditable)
+
+      // Ctrl+Shift+C: Quick Clipboard Copy
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault()
+        handleQuickClipboardCopy()
+        return
+      }
+
+      // Ctrl+Shift+E or Ctrl+E: Open Export Dialog
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault()
+        setIsExportModalOpen(true)
+        return
+      }
 
       // Ctrl+S: Save
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -431,7 +527,12 @@ export const App: React.FC = () => {
 
       // Escape: Exit recording mode or close active drawers/modals
       if (e.key === 'Escape') {
-        if (isCodeModalOpen) {
+        if (isMarqueeSelecting) {
+          setIsMarqueeSelecting(false)
+          setIsExportModalOpen(true)
+        } else if (isExportModalOpen) {
+          setIsExportModalOpen(false)
+        } else if (isCodeModalOpen) {
           setIsCodeModalOpen(false)
         } else if (isBookmarksDrawerOpen) {
           setIsBookmarksDrawerOpen(false)
@@ -487,9 +588,12 @@ export const App: React.FC = () => {
     handleJumpToBookmark,
     handleNextBookmark,
     handlePreviousBookmark,
+    handleQuickClipboardCopy,
     isRecordingMode,
     isCodeModalOpen,
-    isBookmarksDrawerOpen
+    isBookmarksDrawerOpen,
+    isExportModalOpen,
+    isMarqueeSelecting
   ])
 
   return (
@@ -524,6 +628,7 @@ export const App: React.FC = () => {
         onImportImage={handleImportImage}
         onImportPdf={handleImportPdf}
         onOpenCodeSnippetModal={() => setIsCodeModalOpen(true)}
+        onOpenExport={() => setIsExportModalOpen(true)}
         onToggleDevTools={handleToggleDevTools}
       />
 
@@ -589,6 +694,37 @@ export const App: React.FC = () => {
         onClose={() => setIsCodeModalOpen(false)}
       />
 
+      {/* Production Export Pipeline Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen && !isMarqueeSelecting}
+        adapter={adapter}
+        projectTitle={manifest.title}
+        customBounds={customExportBounds}
+        onClose={() => setIsExportModalOpen(false)}
+        onStartMarquee={() => {
+          setIsExportModalOpen(false)
+          setIsMarqueeSelecting(true)
+        }}
+        onToast={showToast}
+      />
+
+      {/* Interactive Marquee Region Selector */}
+      {isMarqueeSelecting && (
+        <MarqueeSelector
+          adapter={adapter}
+          onSelectBounds={(bounds) => {
+            setCustomExportBounds(bounds)
+            setIsMarqueeSelecting(false)
+            setIsExportModalOpen(true)
+            showToast(`Bounded area captured: ${bounds.width}×${bounds.height}px`, 'info')
+          }}
+          onCancel={() => {
+            setIsMarqueeSelecting(false)
+            setIsExportModalOpen(true)
+          }}
+        />
+      )}
+
       {/* Developer Input / Stylus Inspector */}
       <InputInspector
         snapshot={pointerSnapshot}
@@ -596,6 +732,39 @@ export const App: React.FC = () => {
         isOpen={isInspectorOpen}
         onClose={() => setIsInspectorOpen(false)}
       />
+
+      {/* Global Notification Toast */}
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#18181b',
+            border: `1px solid ${
+              toast.type === 'success' ? '#22c55e' : toast.type === 'warning' ? '#f59e0b' : '#3b82f6'
+            }`,
+            color: '#ffffff',
+            padding: '8px 16px',
+            borderRadius: 20,
+            fontSize: 13,
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+            zIndex: 9999,
+            pointerEvents: 'none',
+            animation: 'fadeInUp 0.2s ease-out'
+          }}
+        >
+          {toast.type === 'success' && <CheckCircle2 size={16} color="#22c55e" />}
+          {toast.type === 'warning' && <AlertTriangle size={16} color="#f59e0b" />}
+          {toast.type === 'info' && <Info size={16} color="#60a5fa" />}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   )
 }

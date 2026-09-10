@@ -22,6 +22,19 @@ export interface ImportPdfResult {
   pdfBase64: string
 }
 
+export interface SaveExportFileOptions {
+  defaultFilename: string
+  dataBase64: string
+  filters: Array<{ name: string; extensions: string[] }>
+}
+
+export interface SaveExportFileResult {
+  success: boolean
+  filePath?: string
+  canceled?: boolean
+  error?: string
+}
+
 export interface SystemInfo {
   platform: string
   arch: string
@@ -39,6 +52,9 @@ export interface DesktopApi {
   importPdf(): Promise<ImportPdfResult | null>
   readDocumentFile(projectDir: string, relativePath: string): Promise<string | null>
   selectDirectory(): Promise<string | null>
+  saveExportFile(options: SaveExportFileOptions): Promise<SaveExportFileResult>
+  copyImageToClipboard(dataUrl: string): Promise<boolean>
+  copyTextToClipboard(text: string): Promise<boolean>
   getSystemInfo(): Promise<SystemInfo>
   toggleDevTools(): Promise<void>
 }

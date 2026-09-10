@@ -9,9 +9,9 @@ This document outlines the phased development roadmap for **CanvasTube**, transf
 ```
 Phase 0 ────► Phase 1 ────► Phase 2 ────► Phase 3 ────► Phase 4
 Setup &       Infinite      Architecture  Document &    Video Recording
-Foundation    Canvas &      Stencils &    PDF Workflow  Production
-              Stylus        Bookmarks                   Export
-[COMPLETED]   [COMPLETED]   [COMPLETED]   [COMPLETED]   [UPCOMING]
+Foundation    Canvas &      Stencils &    PDF Workflow  & Production Export
+              Stylus        Bookmarks                   [IN PROGRESS - 50%]
+[COMPLETED]   [COMPLETED]   [COMPLETED]   [COMPLETED]   
 ```
 
 ---
@@ -86,15 +86,18 @@ Foundation    Canvas &      Stencils &    PDF Workflow  Production
 
 ---
 
-## Phase 4: Recording, Streaming & Production Integration (Upcoming / Sprint 5)
+## Phase 4: Recording, Streaming & Production Integration (In Progress)
 
 ### 1. OBS Studio Integration
 - [ ] Local WebSocket bridge or hotkey hook allowing OBS to synchronize scene switching with CanvasTube camera bookmarks.
 - [ ] Virtual green-screen or transparent canvas background toggle.
 
-### 2. Canvas Export Pipeline
-- [ ] High-resolution SVG / 4K PNG export bounded to active scene or selected frame.
-- [ ] Clipboard copy directly formatted for social media and documentation sharing.
+### 2. Production Export Pipeline (Completed)
+- [x] **High-Resolution PNG Rasterizer**: Render active canvas or selected elements at 1x, 2x, 3x, 4x, 4K UHD (3840px), and 8K FUHD (7680px) with background transparency and theme options.
+- [x] **Standalone Vector SVG Export**: Export canvas scenes to valid, self-contained SVG files with embedded web fonts and base64 assets.
+- [x] **Bounded Area Export**: Interactive Marquee tool overlay (`MarqueeSelector.tsx`) to drag and export an exact bounded region with real-time dimensions badge.
+- [x] **Quick Clipboard Copy**: Global keyboard shortcut (`Ctrl+Shift+C`) to copy selected elements or viewport straight to system clipboard as high-res PNG via native Electron clipboard IPC (Wayland, X11, and Windows).
+- [x] **Export UI Modal**: Modern dialog (`ExportModal.tsx`) with live thumbnail rendering, format/scope/resolution toggles, and atomic file saving.
 
 ### 3. Video Cut-Points & Chapters
 - [ ] Automated timestamp marker export (`chapters.txt`) corresponding to camera bookmark transitions during recording sessions for YouTube description upload.

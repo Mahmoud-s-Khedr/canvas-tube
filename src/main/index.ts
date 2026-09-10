@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, clipboard, nativeImage } from 'electron'
 import * as path from 'node:path'
+import * as fs from 'node:fs'
 import { ProjectService } from './services/project-service'
 import { CanvasProjectBundle, validateProjectManifest } from '../core/project/project-manifest'
 
@@ -184,6 +185,62 @@ function setupIpcHandlers(): void {
     } catch (err) {
       console.error('[pdf:readDocument] Failed:', err)
       return null
+    }
+  })
+
+  // Export File IPC Handler (Native Save Dialog & Atomic Write)
+  ipcMain.handle(
+    'export:saveFile',
+    async (
+      _event,
+      args: {
+        defaultFilename: string
+        dataBase64: string
+        filters: Array<{ name: string; extensions: string[] }>
+      }
+    ) => {
+      if (!mainWindow) return { success: false, error: 'No main window available' }
+      try {
+        const result = await dialog.showSaveDialog(mainWindow, {
+          title: 'Export Diagram',
+          defaultPath: args.defaultFilename,
+          filters: args.filters,
+          properties: ['showOverwriteConfirmation']
+        })
+
+        if (result.canceled || !result.filePath) {
+          return { success: false, canceled: true }
+        }
+
+        const buffer = Buffer.from(args.dataBase64, 'base64')
+        await fs.promises.writeFile(result.filePath, buffer)
+        return { success: true, filePath: result.filePath }
+      } catch (err) {
+        dialog.showErrorBox('Export Failed', err instanceof Error ? err.message : 'Unknown error')
+        return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+      }
+    }
+  )
+
+  // System Clipboard IPC Handlers (Wayland, X11, and Windows native clipboard)
+  ipcMain.handle('clipboard:writeImage', (_event, dataUrl: string) => {
+    try {
+      const image = nativeImage.createFromDataURL(dataUrl)
+      clipboard.writeImage(image)
+      return true
+    } catch (err) {
+      console.error('[clipboard:writeImage] Failed:', err)
+      return false
+    }
+  })
+
+  ipcMain.handle('clipboard:writeText', (_event, text: string) => {
+    try {
+      clipboard.writeText(text)
+      return true
+    } catch (err) {
+      console.error('[clipboard:writeText] Failed:', err)
+      return false
     }
   })
 }

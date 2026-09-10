@@ -33,7 +33,7 @@
 | **Phase 1** | **Infinite Canvas & Stylus Input Slice** | `[x]` Completed | Sprint 1 | 100% |
 | **Phase 2** | **Technical Stencils & Camera Bookmarks** | `[x]` Completed | Sprint 2 & 3 | 100% |
 | **Phase 3** | **PDF Annotation & Code Snippets** | `[x]` Completed | Sprint 4 | 100% |
-| **Phase 4** | **Recording, OBS Studio & Production Export** | `[ ]` Planned | Sprint 5 | 0% |
+| **Phase 4** | **Recording, OBS Studio & Production Export** | `[/]` In Progress | Sprint 5 | 50% |
 | **Phase 5** | **Packaging, Hardening & Multi-Platform CI** | `[/]` In Progress | Sprint 2/5 | 85% |
 
 ---
@@ -123,8 +123,7 @@
 - [x] **Offline PDF Processing Engine**
   - [x] Integrate `pdfjs-dist` in an offline worker process (no external telemetry, zero CDN requests, bundled worker in `src/renderer/public/pdf.worker.min.mjs`).
   - [x] PDF document import action placing files into `documents/` bundle subdirectory with SHA-256 integrity hashing.
-  - [x] Multi-page slide-strip dock ([`DocumentSlideDock`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/documents/DocumentSlideDock.tsx)) for browsing, selecting, and jumping across presentation slides.
-- [x] **Canvas-Pinned Slides & Freehand Inking**
+  - [x] Multi-page slide-strip dock ([`DocumentSlideDock`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/documents/DocumentSlideDock.tsx)) for browsing, selecting, and jumping across presentation slides.\n- [x] **Canvas-Pinned Slides & Freehand Inking**
   - [x] Pinning PDF slides or research papers onto the infinite canvas as auto-locked reference frames (`locked: true`).
   - [x] Drag-and-drop slide pages directly from slide dock onto exact canvas scene coordinates.
   - [x] Freehand stylus vector annotation layered directly over PDF pages without raster degradation.
@@ -143,11 +142,13 @@
   - [ ] Local WebSocket / IPC server for OBS Studio plugin integration.
   - [ ] Trigger OBS scene switches automatically when jumping between Camera Bookmarks.
   - [ ] Green-screen / transparent background mode for overlaying drawings over camera feeds.
-- [ ] **Production Export Pipelines**
-  - [ ] 4K / 8K ultra-high-resolution PNG rasterizer.
-  - [ ] Vector SVG export with embedded fonts and embedded images.
-  - [ ] Bounded region export (select rectangle and export image).
-  - [ ] "Copy to Clipboard as PNG" shortcut (`Ctrl+Shift+C`).
+- [x] **Production Export Pipeline (Phase 4.2 - Completed)**
+  - [x] Core export domain layer ([`export-types.ts`](file:///home/mk/Projects/CV_projects/canvas-tube/src/core/export/export-types.ts)) with aspect-ratio preserving dimensions calculation (`calculateExportDimensions`).
+  - [x] High-resolution PNG rasterizer rendering canvas elements at 1x, 2x, 3x, 4x, 4K UHD (3840px), and 8K FUHD (7680px) with Dark, Light, and Transparent background modes.
+  - [x] Standalone vector SVG export with embedded fonts, CSS styling, and base64 assets.
+  - [x] Bounded area export via interactive Marquee selection tool ([`MarqueeSelector.tsx`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/export/MarqueeSelector.tsx)) with live pixel dimension badges and virtual frame clipping.
+  - [x] Quick Clipboard Copy hotkey (`Ctrl+Shift+C`) instantly exporting active selection or viewport to OS clipboard as PNG via native Electron clipboard IPC across Linux Wayland, X11, and Windows.
+  - [x] Export Modal UI ([`ExportModal.tsx`](file:///home/mk/Projects/CV_projects/canvas-tube/src/renderer/src/components/export/ExportModal.tsx)) with real-time thumbnail preview, scope selection (All / Selection / Viewport / Bounded Region), output specifications, and atomic file saving.
 - [ ] **YouTube Video Chapter Generation**
   - [ ] Session timer tracking time spent per Camera Bookmark during recording.
   - [ ] One-click export of `chapters.txt` formatted for YouTube video descriptions (e.g. `00:00 - Introduction`, `03:45 - Cache Invalidation`).
@@ -163,8 +164,7 @@
   - [x] Implement GitHub Actions CI workflow ([`.github/workflows/build-fedora-debug.yml`](file:///home/mk/Projects/CV_projects/canvas-tube/.github/workflows/build-fedora-debug.yml)) running inside official `fedora:41` container to build and test the debug distribution.
   - [x] AppImage standalone executable (`npm run build:linux:appimage`).
   - [x] Automated AppImage generation and upload in CI workflow (`canvastube-fedora-appimage` artifact).
-  - [x] Optional RPM packaging step via `build_rpm` workflow dispatch input.
-  - [x] CanvasTube brand desktop icons in `build/icons/`.
+  - [x] Optional RPM packaging step via `build_rpm` workflow dispatch input.\n  - [x] CanvasTube brand desktop icons in `build/icons/`.
 - [x] **Windows 10 & 11 Support**
   - [x] Configure `win` and `nsis` sections in `electron-builder.yml`.
   - [x] Generate Windows multi-resolution icon `build/icon.ico`.
@@ -178,15 +178,3 @@
   - [ ] Virtualized rendering benchmark for scenes with >5,000 elements.
   - [ ] Memory leak audit during continuous 2-hour drawing sessions.
   - [ ] Automated regression testing on Wayland compositors (GNOME Mutter, KDE KWin, Hyprland).
-
----
-
-## 📅 Sprint Schedule & Milestones
-
-```
-Sprint 1 (Weeks 1-2): Phase 0 & Phase 1 Vertical Slice ─────► [COMPLETED]
-Sprint 2 (Weeks 3-4): Official Stencils & Windows/Linux CI ─► [COMPLETED]
-Sprint 3 (Weeks 5-6): Camera Bookmarks & Scene Tour ────────► [COMPLETED]
-Sprint 4 (Weeks 7-8): PDF Slide Inking & Code Cards ────────► [COMPLETED]
-Sprint 5 (Weeks 9-10): OBS Integration & Production Polish ─► [UPCOMING]
-```

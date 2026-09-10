@@ -1,3 +1,9 @@
+import type {
+  CanvasExportConfig,
+  CanvasExportResult,
+  ExportScope
+} from '../export/export-types'
+
 export type ObjectId = string
 
 export interface Point {
@@ -92,6 +98,11 @@ export interface CanvasAdapter {
   deserialize(scene: unknown): void
 
   addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void
+
+  // Export subsystem methods
+  exportCanvas(config: CanvasExportConfig): Promise<CanvasExportResult>
+  getExportBounds(scope: ExportScope, customBounds?: Bounds): Bounds | null
+  getElementsCount(scope?: 'all' | 'selection'): number
 
   destroy?(): void
 }
