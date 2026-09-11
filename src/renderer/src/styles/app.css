@@ -81,3 +81,23 @@ body,
 .canvastube-dock-btn:active {
   transform: scale(0.92);
 }
+
+/* Architecture Library Stencil Icon Preview */
+.canvastube-icon-preview {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvastube-icon-preview svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  display: block;
+}

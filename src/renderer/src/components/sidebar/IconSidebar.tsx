@@ -232,7 +232,8 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
           borderBottom: '1px solid #27272a',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          flexShrink: 0
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13, color: '#f4f4f5' }}>
@@ -256,7 +257,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
       </div>
 
       {/* Search Bar */}
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid #27272a' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid #27272a', flexShrink: 0 }}>
         <div
           style={{
             display: 'flex',
@@ -294,7 +295,8 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
           gap: 4,
           overflowX: 'auto',
           borderBottom: '1px solid #27272a',
-          scrollbarWidth: 'none'
+          scrollbarWidth: 'none',
+          flexShrink: 0
         }}
       >
         {providers.map((p) => (
@@ -336,11 +338,13 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           padding: '12px 14px',
           display: 'grid',
           gridTemplateColumns:
             sidebarWidth < 240 ? '1fr' : 'repeat(auto-fill, minmax(105px, 1fr))',
+          gridAutoRows: 'minmax(110px, max-content)',
           gap: 10,
           alignContent: 'start'
         }}
@@ -363,12 +367,14 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              justifyContent: 'flex-start',
               cursor: 'grab',
               transition: 'all 0.15s ease',
               textAlign: 'center',
               userSelect: 'none',
               minWidth: 0,
-              overflow: 'hidden'
+              minHeight: 110,
+              boxSizing: 'border-box'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = '#38bdf8'
@@ -381,7 +387,17 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
             title={`Click to place at center, or drag & drop anywhere onto canvas (${icon.name})`}
           >
             <div
-              style={{ width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="canvastube-icon-preview"
+              style={{
+                width: 44,
+                height: 44,
+                minWidth: 44,
+                minHeight: 44,
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
               dangerouslySetInnerHTML={{ __html: icon.svgContent }}
             />
             <span
@@ -390,12 +406,13 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
                 fontSize: 11,
                 color: '#e4e4e7',
                 fontWeight: 500,
-                lineHeight: 1.2,
+                lineHeight: 1.25,
                 wordBreak: 'break-word',
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                flexShrink: 0
               }}
             >
               {icon.name}
@@ -404,8 +421,11 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
               style={{
                 fontSize: 9,
                 color: '#71717a',
-                marginTop: 2,
-                textTransform: 'uppercase'
+                marginTop: 'auto',
+                paddingTop: 4,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                flexShrink: 0
               }}
             >
               {icon.category}
@@ -435,7 +455,8 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
           borderTop: '1px solid #27272a',
           fontSize: 10,
           color: '#71717a',
-          lineHeight: 1.4
+          lineHeight: 1.4,
+          flexShrink: 0
         }}
       >
         Click to place at center, or <strong>drag & drop</strong> directly onto the canvas.
