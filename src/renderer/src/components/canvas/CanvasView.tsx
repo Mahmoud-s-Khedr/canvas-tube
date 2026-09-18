@@ -4,7 +4,8 @@ import { Excalidraw } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import { FileText, Image as ImageIcon, Terminal } from 'lucide-react'
 import { ExcalidrawCanvasAdapter } from './ExcalidrawCanvasAdapter'
-import { IconRegistry, IconDefinition } from '@core/icons/icon-registry'
+import { IconRegistry, INITIAL_ICON_DEFINITIONS } from '@core/icons/icon-registry'
+import { placeIcon } from '@core/icons/icon-placement'
 import '@excalidraw/excalidraw/index.css'
 
 interface CanvasViewProps {
@@ -18,6 +19,8 @@ interface CanvasViewProps {
   onImportImage?: () => void
   onOpenCodeSnippetModal?: () => void
 }
+
+const ICON_REGISTRY = new IconRegistry(INITIAL_ICON_DEFINITIONS)
 
 export const CanvasView: React.FC<CanvasViewProps> = ({
   adapter,
@@ -88,38 +91,16 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
       }
 
       // 2. Check if dropped item is an architecture icon stencil
-      const icon = data as IconDefinition
-      if (!icon || !icon.id || !icon.svgContent) return
+      if (data?.type !== 'architecture-icon' || typeof data.id !== 'string') return
+      const icon = ICON_REGISTRY.get(data.id)
+      if (!icon) return
 
       e.preventDefault()
 
       // Convert drop client coordinates directly to infinite canvas scene space
       const scenePoint = adapter.screenToScene(e.clientX, e.clientY)
 
-      const dataUrl = IconRegistry.svgToDataUrl(icon.svgContent)
-      const fileId = `icon_file_${icon.id}_${Date.now()}`
-
-      adapter.addFile({
-        id: fileId,
-        mimeType: 'image/svg+xml',
-        dataURL: dataUrl,
-        created: Date.now()
-      })
-
-      const size = 64
-      adapter.addObject({
-        type: 'image',
-        x: Math.round(scenePoint.x - size / 2),
-        y: Math.round(scenePoint.y - size / 2),
-        width: size,
-        height: size,
-        fileId,
-        customData: {
-          iconId: icon.id,
-          name: icon.name,
-          provider: icon.provider
-        }
-      })
+      placeIcon(adapter, icon, scenePoint)
     } catch (err) {
       console.error('[CanvasView] Failed to process dropped item:', err)
     }

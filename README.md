@@ -15,7 +15,7 @@ Offline desktop infinite-canvas workspace optimized for technical explanations a
 - 📄 **Offline PDF Slide & Document Inking**: Import technical slides or research papers into the project. Browse pages in the slide-strip dock, drag or pin them onto the canvas as locked reference cards, and ink handwritten notes on top without raster degradation.
 - 💻 **Syntax-Highlighted Code Cards**: Generate IDE-styled vector code cards with macOS window dots, file tabs, line number gutters, and Prism multi-language syntax highlighting (TypeScript, Python, Go, Rust, SQL, Bash, YAML, etc.).
 - 📦 **Offline Content-Addressed Bundles**: Self-contained project directory format with manifest v1 metadata, scene graphs, and SHA-256 deduplicated image assets.
-- 🏛️ **130+ Official Architecture Stencils**: Built-in official vector catalog featuring AWS, Google Cloud (GCP), Microsoft Azure, Kubernetes (`kubernetes/community`), and generic system design components. Drag and drop directly onto the canvas.
+- 🏛️ **160+ Architecture Stencils**: Built-in AWS, Google Cloud (GCP), Microsoft Azure, Kubernetes (`kubernetes/community`), architecture primitives, and common technology logos such as Redis, PostgreSQL, MySQL, Kafka, Docker, Prometheus, and Grafana. Drag and drop directly onto the canvas.
 - 🔍 **Live Hardware Stylus Inspector**: Real-time diagnostic panel displaying pen pressure bars, tilt angles, coordinates, and tablet hardware detection.
 - 🔒 **Deterministic & Fully Offline**: Zero cloud dependencies, self-hosted web fonts, context-isolated Electron sandbox, and zero telemetry.
 - 💻 **Multi-Platform Support**: First-class support for Fedora Linux (AppImage & unpacked binary) and Windows 10 & 11 (Portable `.exe` & NSIS installer).
@@ -99,7 +99,7 @@ Both pipelines enforce type-checking (`tsc`), automated unit tests (`vitest`), a
 
 ## 🏛️ Built-in Stencil Ecosystem
 
-CanvasTube bundles 133+ vector stencils organized under `assets/icons/`:
+CanvasTube bundles 160+ vector stencils organized under `assets/icons/`:
 
 | Provider | Origin & Source | Count | Highlights |
 |---|---|---|---|
@@ -107,7 +107,7 @@ CanvasTube bundles 133+ vector stencils organized under `assets/icons/`:
 | **GCP** | [Official Google Cloud Icons](https://cloud.google.com/icons) | **34** | Compute Engine, GKE, Cloud Run, GCS, Cloud SQL, Spanner, BigQuery, Vertex AI, Pub/Sub, Armor |
 | **Azure** | [Official Azure Architecture Icons](https://learn.microsoft.com/en-us/azure/architecture/icons/) | **30** | VMs, Functions, App Services, AKS, Blob Storage, Cosmos DB, SQL DB, Redis, Event Hubs, Azure OpenAI |
 | **Kubernetes** | [Official `kubernetes/community` Icons](https://github.com/kubernetes/community/tree/master/icons) | **23** | Pod, Deployment, Service, Ingress, ConfigMap, Secret, StatefulSet, DaemonSet, PV/PVC, Node, Control Plane |
-| **Generic** | Standard System Design Primitives | **13** | Server, Database, Cache, Queue, Load Balancer, Firewall, CDN, Client, User, Storage, Microservice |
+| **Generic** | System primitives + [Simple Icons](https://simpleicons.org/) v16 | **41** | Redis, PostgreSQL, MySQL, Kafka, Docker, NGINX, Prometheus, Grafana, Terraform, and more |
 
 All stencils support **live keyword search** (e.g. searching "kafka" finds Event Hubs & Queue; searching "postgres" finds Cloud SQL, RDS, and Azure PostgreSQL) and **drag-and-drop** directly to the infinite canvas.
 

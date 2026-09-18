@@ -105,8 +105,8 @@ export const KNOWN_STENCILS: Record<string, StencilMetadata> = {
       "app"
     ]
   },
-  "generic/storage": {
-    "name": "File / Object Storage",
+  "generic/storage-bucket": {
+    "name": "Object Storage Bucket",
     "category": "storage",
     "tags": [
       "storage",
@@ -128,28 +128,56 @@ export const KNOWN_STENCILS: Record<string, StencilMetadata> = {
       "admin"
     ]
   },
-  "generic/microservice": {
-    "name": "Microservice / Container",
-    "category": "compute",
+  "generic/event-bus": {
+    "name": "Event Bus",
+    "category": "integration",
     "tags": [
-      "microservice",
-      "service",
-      "container",
-      "app",
-      "pod"
+      "event bus",
+      "events",
+      "pubsub",
+      "kafka",
+      "messaging"
     ]
   },
-  "generic/cdn": {
-    "name": "CDN / Edge Network",
+  "generic/gateway": {
+    "name": "API Gateway",
     "category": "network",
     "tags": [
-      "cdn",
-      "edge",
-      "content delivery",
-      "cache",
-      "global"
+      "gateway",
+      "api gateway",
+      "reverse proxy",
+      "routing",
+      "ingress"
     ]
   },
+  "generic/redis": { "name": "Redis", "category": "database", "tags": ["redis", "cache", "in-memory", "key-value"] },
+  "generic/postgresql": { "name": "PostgreSQL", "category": "database", "tags": ["postgresql", "postgres", "rdbms", "sql", "database"] },
+  "generic/mysql": { "name": "MySQL", "category": "database", "tags": ["mysql", "rdbms", "sql", "database"] },
+  "generic/mongodb": { "name": "MongoDB", "category": "database", "tags": ["mongodb", "mongo", "document", "nosql", "database"] },
+  "generic/elasticsearch": { "name": "Elasticsearch", "category": "database", "tags": ["elasticsearch", "elastic", "search", "logs", "database"] },
+  "generic/cassandra": { "name": "Apache Cassandra", "category": "database", "tags": ["cassandra", "wide-column", "nosql", "database"] },
+  "generic/cockroachdb": { "name": "CockroachDB", "category": "database", "tags": ["cockroachdb", "sql", "distributed", "database"] },
+  "generic/kafka": { "name": "Apache Kafka", "category": "integration", "tags": ["kafka", "streaming", "event bus", "messaging"] },
+  "generic/rabbitmq": { "name": "RabbitMQ", "category": "integration", "tags": ["rabbitmq", "amqp", "queue", "messaging"] },
+  "generic/nats": { "name": "NATS", "category": "integration", "tags": ["nats", "messaging", "pubsub", "queue"] },
+  "generic/pulsar": { "name": "Apache Pulsar", "category": "integration", "tags": ["pulsar", "streaming", "messaging", "pubsub"] },
+  "generic/docker": { "name": "Docker", "category": "containers", "tags": ["docker", "container", "images", "runtime"] },
+  "generic/nginx": { "name": "NGINX", "category": "networking", "tags": ["nginx", "web server", "reverse proxy", "load balancer"] },
+  "generic/traefik": { "name": "Traefik", "category": "networking", "tags": ["traefik", "reverse proxy", "ingress", "load balancer"] },
+  "generic/vault": { "name": "HashiCorp Vault", "category": "security", "tags": ["vault", "secrets", "keys", "credentials"] },
+  "generic/prometheus": { "name": "Prometheus", "category": "observability", "tags": ["prometheus", "metrics", "monitoring", "observability"] },
+  "generic/grafana": { "name": "Grafana", "category": "observability", "tags": ["grafana", "dashboards", "metrics", "observability"] },
+  "generic/jaeger": { "name": "Jaeger", "category": "observability", "tags": ["jaeger", "tracing", "traces", "observability"] },
+  "generic/opentelemetry": { "name": "OpenTelemetry", "category": "observability", "tags": ["opentelemetry", "otel", "traces", "metrics", "logs"] },
+  "generic/elastic": { "name": "Elastic", "category": "observability", "tags": ["elastic", "elasticsearch", "logs", "observability"] },
+  "generic/terraform": { "name": "Terraform", "category": "devops", "tags": ["terraform", "iac", "infrastructure as code", "devops"] },
+  "generic/ansible": { "name": "Ansible", "category": "devops", "tags": ["ansible", "automation", "configuration management", "devops"] },
+  "generic/jenkins": { "name": "Jenkins", "category": "devops", "tags": ["jenkins", "ci", "cd", "pipeline"] },
+  "generic/github-actions": { "name": "GitHub Actions", "category": "devops", "tags": ["github actions", "ci", "cd", "pipeline"] },
+  "generic/gitlab": { "name": "GitLab", "category": "devops", "tags": ["gitlab", "ci", "cd", "repository"] },
+  "generic/minio": { "name": "MinIO", "category": "storage", "tags": ["minio", "object storage", "s3", "bucket"] },
+  "generic/airflow": { "name": "Apache Airflow", "category": "devops", "tags": ["airflow", "workflow", "orchestration", "pipelines"] },
+  "generic/envoy": { "name": "Envoy", "category": "networking", "tags": ["envoy", "proxy", "service mesh", "load balancer"] },
   "aws/ec2": {
     "name": "Amazon EC2",
     "category": "compute",

@@ -5,6 +5,7 @@ import {
   IconProvider,
   INITIAL_ICON_DEFINITIONS
 } from '@core/icons/icon-registry'
+import { placeIcon } from '@core/icons/icon-placement'
 import { CanvasAdapter } from '@core/canvas/canvas-adapter'
 import { Search, ChevronLeft, ChevronRight, Layers, Box } from 'lucide-react'
 
@@ -29,6 +30,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProvider, setSelectedProvider] = useState<IconProvider | 'all'>('all')
+  const [selectedCategory, setSelectedCategory] = useState('all')
 
   const sidebarWidth = width ?? 280
   const [isDragging, setIsDragging] = useState(false)
@@ -39,8 +41,8 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
   const registry = useMemo(() => new IconRegistry(INITIAL_ICON_DEFINITIONS), [])
 
   const filteredIcons = useMemo(() => {
-    return registry.search(searchQuery, selectedProvider)
-  }, [registry, searchQuery, selectedProvider])
+    return registry.search(searchQuery, selectedProvider, selectedCategory)
+  }, [registry, searchQuery, selectedProvider, selectedCategory])
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -96,32 +98,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
 
     const sceneCenter = adapter.getViewportCenter()
 
-    const dataUrl = IconRegistry.svgToDataUrl(icon.svgContent)
-    const fileId = `icon_file_${icon.id}_${Date.now()}`
-
-    // Register image file with the adapter
-    adapter.addFile({
-      id: fileId,
-      mimeType: 'image/svg+xml',
-      dataURL: dataUrl,
-      created: Date.now()
-    })
-
-    // Add image element to canvas
-    const size = 64
-    adapter.addObject({
-      type: 'image',
-      x: Math.round(sceneCenter.x - size / 2),
-      y: Math.round(sceneCenter.y - size / 2),
-      width: size,
-      height: size,
-      fileId,
-      customData: {
-        iconId: icon.id,
-        name: icon.name,
-        provider: icon.provider
-      }
-    })
+    placeIcon(adapter, icon, sceneCenter)
   }
 
   if (!isOpen) {
@@ -269,6 +246,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
           <Search size={14} color="#71717a" />
           <input
             type="text"
+            aria-label="Search architecture icons"
             placeholder="Search ec2, s3, sql, pod..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -299,7 +277,11 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
         {providers.map((p) => (
           <button
             key={p.id}
-            onClick={() => setSelectedProvider(p.id)}
+            onClick={() => {
+              setSelectedProvider(p.id)
+              setSelectedCategory('all')
+            }}
+            aria-pressed={selectedProvider === p.id}
             style={{
               padding: '4px 8px',
               fontSize: 11,
@@ -331,8 +313,34 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
         ))}
       </div>
 
+      <div style={{ padding: '8px 14px', borderBottom: '1px solid #27272a', flexShrink: 0 }}>
+        <label style={{ display: 'block', color: '#a1a1aa', fontSize: 10, marginBottom: 4 }} htmlFor="icon-category">
+          Category
+        </label>
+        <select
+          id="icon-category"
+          value={selectedCategory}
+          onChange={(event) => setSelectedCategory(event.target.value)}
+          style={{
+            width: '100%',
+            backgroundColor: '#09090b',
+            border: '1px solid #3f3f46',
+            borderRadius: 6,
+            color: '#f4f4f5',
+            fontSize: 12,
+            padding: '5px 7px'
+          }}
+        >
+          <option value="all">All categories</option>
+          {registry.getCategories().sort().map((category) => (
+            <option key={category} value={category}>{category}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Icons List Grid */}
       <div
+        role="list"
         style={{
           flex: 1,
           minHeight: 0,
@@ -347,16 +355,21 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
         }}
       >
         {filteredIcons.map((icon) => (
-          <div
+          <button
+            type="button"
             key={icon.id}
             draggable
             onDragStart={(e) => {
-              e.dataTransfer.setData('application/json', JSON.stringify(icon))
+              e.dataTransfer.setData(
+                'application/json',
+                JSON.stringify({ type: 'architecture-icon', id: icon.id })
+              )
               e.dataTransfer.setData('text/plain', icon.name)
               e.dataTransfer.effectAllowed = 'copy'
             }}
             onClick={() => handleAddIcon(icon)}
             style={{
+              appearance: 'none',
               backgroundColor: '#18181b',
               border: '1px solid #3f3f46',
               borderRadius: 8,
@@ -382,9 +395,11 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
               e.currentTarget.style.backgroundColor = '#18181b'
             }}
             title={`Click to place at center, or drag & drop anywhere onto canvas (${icon.name})`}
+            aria-label={`Place ${icon.name} on canvas; drag to place at a specific location`}
           >
             <div
               className="canvastube-icon-preview"
+              aria-hidden="true"
               style={{
                 width: 44,
                 height: 44,
@@ -427,7 +442,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
             >
               {icon.category}
             </span>
-          </div>
+          </button>
         ))}
 
         {filteredIcons.length === 0 && (

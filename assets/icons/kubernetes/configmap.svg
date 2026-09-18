@@ -1,18 +1,35 @@
 <svg
+  
+  
+  
+  
    xmlns="http://www.w3.org/2000/svg"
+  
+  
    width="64"
    height="64"
    viewBox="0 0 18.035334 17.500378"
    version="1.1"
    id="svg13826"
+  
   >
+  <defs
+     id="defs13820" />
+  
+  
   <g
+    
+    
      id="layer1"
      transform="translate(-0.99262638,-1.174181)">
     <g
        id="g70"
        transform="matrix(1.0148887,0,0,1.0148887,16.902146,-2.698726)">
       <path
+        
+        
+        
+        
          id="path3055"
          d="m -6.8492015,4.2724668 a 1.1191255,1.1099671 0 0 0 -0.4288818,0.1085303 l -5.8524037,2.7963394 a 1.1191255,1.1099671 0 0 0 -0.605524,0.7529759 l -1.443828,6.2812846 a 1.1191255,1.1099671 0 0 0 0.151943,0.851028 1.1191255,1.1099671 0 0 0 0.06362,0.08832 l 4.0508,5.036555 a 1.1191255,1.1099671 0 0 0 0.874979,0.417654 l 6.4961011,-0.0015 a 1.1191255,1.1099671 0 0 0 0.8749788,-0.416906 L 1.3818872,15.149453 A 1.1191255,1.1099671 0 0 0 1.5981986,14.210104 L 0.15212657,7.9288154 A 1.1191255,1.1099671 0 0 0 -0.45339794,7.1758396 L -6.3065496,4.3809971 A 1.1191255,1.1099671 0 0 0 -6.8492015,4.2724668 Z"
          style="fill:#326ce5;fill-opacity:1;stroke:none;stroke-width:0;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
@@ -26,11 +43,17 @@
        id="g3349"
        transform="translate(0.11778981,0.45794291)">
       <path
+        
+        
          style="fill:none;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.79374999;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-opacity:1"
+        
          d="m 8.236948,6.2914262 5.825001,0"
          id="path876" />
       <path
+        
+        
          style="fill:none;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.79374999;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-opacity:1"
+        
          d="m 5.723058,6.2914262 1.45834,0"
          id="path880" />
       <a
@@ -38,27 +61,44 @@
         <path
            id="path884"
            d="m 10.353619,8.4080928 3.70833,0"
+          
            style="fill:none;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.79374999;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-opacity:1"
+          
            />
       </a>
       <path
+        
+        
          style="fill:none;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.79374999;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-opacity:1"
+        
          d="m 7.839728,8.4080928 1.4583305,0"
          id="path888" />
       <path
+        
+        
          style="fill:none;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.79374999;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-opacity:1"
+        
          d="m 10.353619,10.52476 3.70833,0"
          id="path892" />
       <path
+        
+        
          style="fill:none;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.79374999;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-opacity:1"
+        
          d="m 7.839728,10.52476 1.4583305,0"
          id="path896" />
       <path
+        
+        
          style="fill:none;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.79374999;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-opacity:1"
+        
          d="m 8.236948,12.641428 5.825001,0"
          id="path900" />
       <path
+        
+        
          style="fill:none;fill-rule:evenodd;stroke:#ffffff;stroke-width:0.79374999;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:10;stroke-opacity:1"
+        
          d="m 5.723058,12.641428 1.45834,0"
          id="path904" />
     </g>

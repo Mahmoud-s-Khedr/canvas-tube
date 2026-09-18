@@ -8,6 +8,8 @@ import {
 } from '../src/core/project/project-manifest'
 import { AssetRegistry } from '../src/core/assets/asset-registry'
 import { IconRegistry, INITIAL_ICON_DEFINITIONS } from '../src/core/icons/icon-registry'
+import { KNOWN_STENCILS } from '../src/core/icons/icon-metadata'
+import { placeIcon } from '../src/core/icons/icon-placement'
 import { loadSvgIcons } from '../src/core/icons/icon-loader'
 
 describe('Project Manifest and Serialization', () => {
@@ -135,7 +137,7 @@ describe('Icon Registry & Search', () => {
 
   it('loads expanded official icon catalog across all cloud and k8s providers', () => {
     const registry = new IconRegistry(INITIAL_ICON_DEFINITIONS)
-    expect(registry.getAll().length).toBeGreaterThanOrEqual(125)
+    expect(registry.getAll().length).toBeGreaterThanOrEqual(160)
 
     // Check each provider has rich catalog
     const providers = registry.getProviders()
@@ -149,7 +151,17 @@ describe('Icon Registry & Search', () => {
     expect(registry.search('', 'gcp').length).toBeGreaterThanOrEqual(30)
     expect(registry.search('', 'azure').length).toBeGreaterThanOrEqual(25)
     expect(registry.search('', 'kubernetes').length).toBeGreaterThanOrEqual(20)
-    expect(registry.search('', 'generic').length).toBeGreaterThanOrEqual(10)
+    expect(registry.search('', 'generic').length).toBeGreaterThanOrEqual(40)
+  })
+
+  it('keeps every bundled SVG and metadata entry in lockstep', () => {
+    const assetKeys = Object.keys(loadSvgIcons())
+      .map((filePath) => filePath.replace(/^.*\/icons\//, '').replace(/\.svg$/, ''))
+      .sort()
+    expect(Object.keys(KNOWN_STENCILS).sort()).toEqual(assetKeys)
+    expect(new Set(INITIAL_ICON_DEFINITIONS.map((icon) => icon.id)).size).toBe(
+      INITIAL_ICON_DEFINITIONS.length
+    )
   })
 
   it('searches by keyword across names and tags', () => {
@@ -177,11 +189,45 @@ describe('Icon Registry & Search', () => {
     // Search for cache/redis in generic
     const cacheResults = registry.search('redis')
     expect(cacheResults.some((i) => i.id === 'gen-cache')).toBe(true)
+
+    const multiTermResults = registry.search('aws lambda')
+    expect(multiTermResults.some((i) => i.id === 'aws-lambda')).toBe(true)
+
+    const redisResults = registry.search('redis cache', 'generic')
+    expect(redisResults.some((i) => i.id === 'gen-redis')).toBe(true)
+
+    const databaseResults = registry.search('', 'generic', 'database')
+    expect(databaseResults.every((i) => i.category === 'database')).toBe(true)
+    expect(databaseResults.some((i) => i.id === 'gen-postgresql')).toBe(true)
   })
 
   it('converts SVG content to valid data URL', () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
     const dataUrl = IconRegistry.svgToDataUrl(svg)
     expect(dataUrl.startsWith('data:image/svg+xml;charset=utf-8,')).toBe(true)
+    expect(() => IconRegistry.svgToDataUrl('<svg><script>alert(1)</script></svg>')).toThrow(
+      'Refusing unsafe SVG content'
+    )
+  })
+
+  it('reuses a bundled SVG file ID for every placement', () => {
+    const icon = INITIAL_ICON_DEFINITIONS.find((item) => item.id === 'gen-redis')!
+    const files: unknown[] = []
+    const objects: unknown[] = []
+    const adapter = {
+      addFile: (file: unknown) => files.push(file),
+      addObject: (object: unknown) => {
+        objects.push(object)
+        return 'element-id'
+      }
+    }
+
+    placeIcon(adapter as any, icon, { x: 100, y: 100 })
+    placeIcon(adapter as any, icon, { x: 200, y: 200 })
+
+    expect(files).toHaveLength(2)
+    expect((files[0] as { id: string }).id).toBe('builtin-icon-gen-redis')
+    expect((files[1] as { id: string }).id).toBe('builtin-icon-gen-redis')
+    expect((objects[0] as { fileId: string }).fileId).toBe('builtin-icon-gen-redis')
   })
 })

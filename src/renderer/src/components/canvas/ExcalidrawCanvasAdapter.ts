@@ -460,6 +460,7 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
 
   public addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void {
     if (!this.api) return
+    if (this.api.getFiles()[file.id]) return
     this.api.addFiles([file as any])
   }
 

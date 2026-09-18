@@ -2,6 +2,7 @@
 
 import type { IconDefinition, IconProvider } from './icon-registry'
 import { KNOWN_STENCILS } from './icon-metadata'
+import { isSafeIconSvg } from './icon-safety'
 
 export function loadSvgIcons(): Record<string, string> {
   return import.meta.glob('../../../assets/icons/**/*.svg', {
@@ -16,6 +17,9 @@ export function loadAllIcons(): IconDefinition[] {
   const definitions: IconDefinition[] = []
 
   for (const [filePath, svgContent] of Object.entries(modules)) {
+    if (!isSafeIconSvg(svgContent as string)) {
+      throw new Error(`Unsafe icon SVG bundled from ${filePath}`)
+    }
     const parts = filePath.replace(/\\/g, '/').split('/')
     const iconsIdx = parts.lastIndexOf('icons')
     if (iconsIdx === -1) continue
@@ -60,8 +64,13 @@ export function loadAllIcons(): IconDefinition[] {
           ? 'k8s'
           : provider
 
+    const id = `${idPrefix}-${basename}`
+    if (definitions.some((icon) => icon.id === id)) {
+      throw new Error(`Duplicate icon id: ${id}`)
+    }
+
     definitions.push({
-      id: `${idPrefix}-${basename}`,
+      id,
       name,
       provider,
       category,

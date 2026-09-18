@@ -278,7 +278,7 @@ For YouTube presentations and technical screencasts:
 
 ## 10. Architecture Stencil & Icon Asset Pipeline
 
-CanvasTube bundles 133+ vector architecture stencils directly into the offline application binary without network calls:
+CanvasTube bundles 160+ vector architecture stencils directly into the offline application binary without network calls:
 
 ### Directory Structure & Bundling
 - SVGs are stored locally under [`assets/icons/`](../assets/icons/) partitioned by provider (`aws/`, `gcp/`, `azure/`, `kubernetes/`, `generic/`).
@@ -290,7 +290,7 @@ CanvasTube bundles 133+ vector architecture stencils directly into the offline a
 
 ### Metadata & Search Engine
 - [`src/core/icons/icon-metadata.ts`](../src/core/icons/icon-metadata.ts) maps icon IDs to human-readable names, categories, and keyword synonym tags.
-- [`IconRegistry`](../src/core/icons/icon-registry.ts) indexes stencils by category and provider, matching against multi-term search queries across titles, categories, and tags.
+- [`IconRegistry`](../src/core/icons/icon-registry.ts) indexes stencils by category and provider. Every whitespace-separated search term must match the title, ID, category, or tags.
 
 ### Drag-and-Drop to Canvas Coordinates
 - When a user drags an icon from [`IconSidebar`](../src/renderer/src/components/sidebar/IconSidebar.tsx) and drops it on [`CanvasView`](../src/renderer/src/components/canvas/CanvasView.tsx):
