@@ -121,6 +121,7 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   private unsubscribeOnChange?: () => void
   private pendingScene: unknown = null
   private animationCancelFn?: () => void
+  private keyboardTarget: HTMLElement | null = null
 
   public setApi(api: ExcalidrawImperativeAPI | null): void {
     if (this.unsubscribeOnChange) {
@@ -153,6 +154,14 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     }
   }
 
+  /**
+   * Installs the concrete Excalidraw container that owns its React keyboard
+   * handler. Keyboard events dispatched on window cannot reach that handler.
+   */
+  public setKeyboardTarget(target: HTMLElement | null): void {
+    this.keyboardTarget = target
+  }
+
   public setPointerListener(listener?: (snapshot: CanvasPointerSnapshot) => void): void {
     this.pointerListener = listener
   }
@@ -169,25 +178,31 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
 
     if (!this.pointerListener) return
 
-    const point = this.screenToScene(event.clientX, event.clientY)
+    // A tablet can report several hardware samples for one browser event.
+    // Preserve those coalesced samples for diagnostics instead of making a
+    // high-rate pen look choppy in the inspector. Excalidraw receives the
+    // original browser event and retains native pressure for freehand strokes.
+    const nativeEvent = 'nativeEvent' in event ? event.nativeEvent : event
+    const samples = nativeEvent.getCoalescedEvents?.() || [nativeEvent]
 
-    const snapshot: CanvasPointerSnapshot = {
-      pointerType: event.pointerType,
-      pressure: event.pressure,
-      tiltX: event.tiltX,
-      tiltY: event.tiltY,
-      twist: event.twist,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      canvasX: Math.round(point.x),
-      canvasY: Math.round(point.y),
-      buttons: event.buttons,
-      pointerId: event.pointerId,
-      isPrimary: event.isPrimary,
-      timestamp: Date.now()
+    for (const sample of samples) {
+      const point = this.screenToScene(sample.clientX, sample.clientY)
+      this.pointerListener({
+        pointerType: sample.pointerType,
+        pressure: sample.pressure,
+        tiltX: sample.tiltX,
+        tiltY: sample.tiltY,
+        twist: sample.twist,
+        clientX: sample.clientX,
+        clientY: sample.clientY,
+        canvasX: Math.round(point.x),
+        canvasY: Math.round(point.y),
+        buttons: sample.buttons,
+        pointerId: sample.pointerId,
+        isPrimary: sample.isPrimary,
+        timestamp: sample.timeStamp
+      })
     }
-
-    this.pointerListener(snapshot)
   }
 
   public addObject(shape: CanvasShapeInput): ObjectId {
@@ -413,14 +428,16 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   }
 
   public undo(): void {
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })
-    )
+    this.dispatchExcalidrawKey('z')
   }
 
   public redo(): void {
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, bubbles: true })
+    this.dispatchExcalidrawKey('y')
+  }
+
+  private dispatchExcalidrawKey(key: string): void {
+    this.keyboardTarget?.dispatchEvent(
+      new KeyboardEvent('keydown', { key, ctrlKey: true, bubbles: true, cancelable: true })
     )
   }
 

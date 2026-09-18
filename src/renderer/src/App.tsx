@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import {
   ProjectManifest,
@@ -39,9 +39,22 @@ import { ExportModal } from './components/export/ExportModal'
 import { MarqueeSelector } from './components/export/MarqueeSelector'
 import { PdfService } from './services/pdf-service'
 import { CheckCircle2, AlertTriangle, Info } from 'lucide-react'
+import type { CanvasToolType } from '@core/canvas/canvas-adapter'
+import { ShortcutSettingsModal } from './components/shortcuts/ShortcutSettingsModal'
+import {
+  createShortcutRegistry,
+  formatBinding,
+  getActiveBinding,
+  loadShortcutPreferences,
+  saveShortcutPreferences,
+  type ShortcutBinding,
+  type ShortcutPreferences
+} from './shortcuts/shortcut-registry'
+import { useShortcutDispatcher } from './shortcuts/use-shortcut-dispatcher'
 
 export const App: React.FC = () => {
   const adapter = useMemo(() => new ExcalidrawCanvasAdapter(), [])
+  const canvasToolSetter = useRef<((tool: CanvasToolType) => void) | null>(null)
   const [manifest, setManifest] = useState<ProjectManifest>(() =>
     createDefaultManifest('System Design Explanation')
   )
@@ -49,6 +62,8 @@ export const App: React.FC = () => {
   const [assetData, setAssetData] = useState<Record<string, string>>({})
   const [isRecordingMode, setIsRecordingMode] = useState(false)
   const [isInspectorOpen, setIsInspectorOpen] = useState(false)
+  const [isShortcutSettingsOpen, setIsShortcutSettingsOpen] = useState(false)
+  const [shortcutPreferences, setShortcutPreferences] = useState<ShortcutPreferences>(loadShortcutPreferences)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
@@ -656,155 +671,92 @@ export const App: React.FC = () => {
     window.desktopApi?.toggleDevTools()
   }, [])
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const isInput =
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-
-      // Ctrl+Shift+C: Quick Clipboard Copy
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
-        e.preventDefault()
-        handleQuickClipboardCopy()
-        return
-      }
-
-      // Ctrl+Shift+E: Open production export
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
-        e.preventDefault()
-        setIsExportModalOpen(true)
-        return
-      }
-
-      // Ctrl+S: Save
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault()
-        if (e.shiftKey) {
-          handleSaveProjectAs()
-        } else {
-          handleSaveProject()
-        }
-        return
-      }
-
-      // Ctrl+O: Open
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
-        e.preventDefault()
-        handleOpenProject()
-        return
-      }
-
-      // Ctrl+N: New
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
-        e.preventDefault()
-        handleNewProject()
-        return
-      }
-
-      // Ctrl+B / Cmd+B: Save current viewpoint as bookmark
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b' && !e.shiftKey) {
-        e.preventDefault()
-        handleAddBookmark()
-        return
-      }
-
-      // Ctrl+Shift+R or F10: Toggle Recording Mode
-      if (
-        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') ||
-        e.key === 'F10'
-      ) {
-        e.preventDefault()
-        setIsRecordingMode((prev) => !prev)
-        return
-      }
-
-      // Escape: Exit recording mode or close active drawers/modals
-      if (e.key === 'Escape') {
-        if (isMarqueeSelecting) {
-          setIsMarqueeSelecting(false)
-          setIsExportModalOpen(true)
-        } else if (isChaptersModalOpen) {
-          setIsChaptersModalOpen(false)
-        } else if (isObsModalOpen) {
-          setIsObsModalOpen(false)
-        } else if (isExportModalOpen) {
-          setIsExportModalOpen(false)
-        } else if (isCodeModalOpen) {
-          setIsCodeModalOpen(false)
-        } else if (isBookmarksDrawerOpen) {
-          setIsBookmarksDrawerOpen(false)
-        } else if (isRecordingMode) {
-          setIsRecordingMode(false)
-        }
-        return
-      }
-
-      // Ctrl+Shift+I: Toggle Stylus Inspector
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'i') {
-        e.preventDefault()
-        setIsInspectorOpen((prev) => !prev)
-        return
-      }
-
-      // Alt+C: Add Chapter Marker
-      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'c') {
-        e.preventDefault()
-        handleAddChapterMarker()
-        return
-      }
-
-      // Hotkeys below should not be intercepted if typing in input/textarea
-      if (isInput) return
-
-      // PageDown or Alt+ArrowRight: Next bookmark in tour
-      if (e.key === 'PageDown' || (e.altKey && e.key === 'ArrowRight')) {
-        e.preventDefault()
-        handleNextBookmark()
-        return
-      }
-
-      // PageUp or Alt+ArrowLeft: Previous bookmark in tour
-      if (e.key === 'PageUp' || (e.altKey && e.key === 'ArrowLeft')) {
-        e.preventDefault()
-        handlePreviousBookmark()
-        return
-      }
-
-      // Alt+1 through Alt+9: Instant jump to bookmark index 1 through 9
-      if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        const num = parseInt(e.key, 10)
-        if (!isNaN(num) && num >= 1 && num <= 9) {
-          e.preventDefault()
-          handleJumpToBookmark(num - 1)
-          return
-        }
-      }
+  const dismissActivePanel = useCallback(() => {
+    if (isShortcutSettingsOpen) {
+      setIsShortcutSettingsOpen(false)
+      return true
     }
+    else if (isMarqueeSelecting) {
+      setIsMarqueeSelecting(false)
+      setIsExportModalOpen(true)
+      return true
+    } else if (isChaptersModalOpen) {
+      setIsChaptersModalOpen(false)
+      return true
+    } else if (isObsModalOpen) {
+      setIsObsModalOpen(false)
+      return true
+    } else if (isExportModalOpen) {
+      setIsExportModalOpen(false)
+      return true
+    } else if (isCodeModalOpen) {
+      setIsCodeModalOpen(false)
+      return true
+    } else if (isBookmarksDrawerOpen) {
+      setIsBookmarksDrawerOpen(false)
+      return true
+    } else if (isRecordingMode) {
+      setIsRecordingMode(false)
+      return true
+    }
+    return false
+  }, [isBookmarksDrawerOpen, isChaptersModalOpen, isCodeModalOpen, isExportModalOpen, isMarqueeSelecting, isObsModalOpen, isRecordingMode, isShortcutSettingsOpen])
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [
-    handleSaveProject,
-    handleSaveProjectAs,
-    handleOpenProject,
-    handleNewProject,
-    handleAddBookmark,
-    handleJumpToBookmark,
-    handleNextBookmark,
-    handlePreviousBookmark,
-    handleQuickClipboardCopy,
-    isRecordingMode,
-    isCodeModalOpen,
-    isBookmarksDrawerOpen,
-    isChaptersModalOpen,
-    isObsModalOpen,
-    isExportModalOpen,
-    isMarqueeSelecting
-  ])
+  const shortcutRegistry = useMemo(() => createShortcutRegistry({
+    newProject: handleNewProject,
+    openProject: handleOpenProject,
+    saveProject: handleSaveProject,
+    saveProjectAs: handleSaveProjectAs,
+    exportProject: () => setIsExportModalOpen(true),
+    quickCopy: handleQuickClipboardCopy,
+    setTool: (tool) => canvasToolSetter.current?.(tool) ?? adapter.setTool(tool),
+    importImage: handleImportImage,
+    undo: () => adapter.undo(),
+    redo: () => adapter.redo(),
+    zoomIn: () => { const camera = adapter.getCamera(); adapter.setCamera({ ...camera, zoom: Math.min(4, camera.zoom * 1.2) }) },
+    zoomOut: () => { const camera = adapter.getCamera(); adapter.setCamera({ ...camera, zoom: Math.max(0.1, camera.zoom / 1.2) }) },
+    resetView: () => adapter.resetView(),
+    toggleSidebar: () => setIsSidebarOpen((current) => !current),
+    toggleDocumentDock: () => setIsDocumentDockOpen((current) => !current),
+    toggleBookmarks: () => setIsBookmarksDrawerOpen((current) => !current),
+    addBookmark: () => handleAddBookmark(),
+    jumpToBookmark: handleJumpToBookmark,
+    nextBookmark: handleNextBookmark,
+    previousBookmark: handlePreviousBookmark,
+    toggleRecordingMode: () => setIsRecordingMode((current) => !current),
+    addChapter: handleAddChapterMarker,
+    toggleInspector: () => setIsInspectorOpen((current) => !current),
+    dismiss: dismissActivePanel
+  }), [adapter, dismissActivePanel, handleAddBookmark, handleAddChapterMarker, handleImportImage, handleJumpToBookmark, handleNewProject, handleNextBookmark, handleOpenProject, handlePreviousBookmark, handleQuickClipboardCopy, handleSaveProject, handleSaveProjectAs])
+
+  useShortcutDispatcher(shortcutRegistry, shortcutPreferences)
+
+  const setShortcutBinding = useCallback((id: string, binding: ShortcutBinding | null) => {
+    setShortcutPreferences((current) => {
+      const next = { ...current, overrides: { ...current.overrides, [id]: binding } }
+      saveShortcutPreferences(next)
+      return next
+    })
+  }, [])
+  const restoreShortcutDefault = useCallback((id: string) => {
+    setShortcutPreferences((current) => {
+      const overrides = { ...current.overrides }
+      delete overrides[id]
+      const next = { ...current, overrides }
+      saveShortcutPreferences(next)
+      return next
+    })
+  }, [])
+  const restoreAllShortcutDefaults = useCallback(() => {
+    const next: ShortcutPreferences = { version: 1, overrides: {} }
+    setShortcutPreferences(next)
+    saveShortcutPreferences(next)
+  }, [])
+  const shortcutLabel = useCallback((id: string): string | undefined => {
+    const command = shortcutRegistry.find((entry) => entry.id === id)
+    const binding = command && getActiveBinding(command, shortcutPreferences.overrides)
+    return binding ? formatBinding(binding) : undefined
+  }, [shortcutPreferences.overrides, shortcutRegistry])
 
   return (
     <div
@@ -838,6 +790,8 @@ export const App: React.FC = () => {
         onSaveProjectAs={handleSaveProjectAs}
         onOpenExport={() => setIsExportModalOpen(true)}
         onToggleDevTools={handleToggleDevTools}
+        onOpenShortcutSettings={() => setIsShortcutSettingsOpen(true)}
+        shortcutLabel={shortcutLabel}
         onOpenChapters={() => setIsChaptersModalOpen(true)}
         chaptersCount={chapters.length}
         onOpenObs={() => setIsObsModalOpen(true)}
@@ -870,6 +824,18 @@ export const App: React.FC = () => {
         onImportPdf={handleImportPdf}
         onImportImage={handleImportImage}
         onOpenCodeSnippetModal={() => setIsCodeModalOpen(true)}
+        onRegisterToolSetter={(setter) => { canvasToolSetter.current = setter }}
+        shortcutLabel={shortcutLabel}
+      />
+
+      <ShortcutSettingsModal
+        isOpen={isShortcutSettingsOpen}
+        commands={shortcutRegistry}
+        preferences={shortcutPreferences}
+        onClose={() => setIsShortcutSettingsOpen(false)}
+        onSetBinding={setShortcutBinding}
+        onRestoreDefault={restoreShortcutDefault}
+        onRestoreAllDefaults={restoreAllShortcutDefaults}
       />
 
       {/* Slide-Strip Dock for Loaded PDF Documents (hidden in recording mode) */}

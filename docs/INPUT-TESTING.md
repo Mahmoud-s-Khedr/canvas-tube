@@ -93,6 +93,30 @@ ELECTRON_OZONE_PLATFORM_HINT=wayland npm run dev
 
 CanvasTube includes a built-in developer **Stylus & Pointer Inspector** specifically engineered to diagnose tablet driver behavior across Wayland and Windows.
 
+### Tablet controls during normal use
+
+The lower-right **Tablet** dock is the day-to-day control surface (the inspector is for
+diagnostics). Its preferences are stored locally for the next launch:
+
+- **Pen draws by default** switches a pen contact to Excalidraw freehand ink without
+  changing the mouse workflow. Turn it off when you want to use shape tools with the pen.
+- **Palm lock** ignores touch input while a pen contact is active, preventing a resting
+  hand from creating marks or moving the canvas.
+- **Barrel button erases** treats either standard barrel switch as a momentary eraser.
+  A physical eraser-end is also recognized. Releasing it restores the previous tool.
+
+CanvasTube does not synthesize pressure: Excalidraw receives the native pen event and
+stores its pressure samples with the freehand stroke. The inspector additionally shows
+coalesced browser samples so a high-rate tablet can be checked without losing fidelity
+to event throttling.
+
+### Tablet express-key mapping
+
+Map tablet express keys or a pen remote to these single-key shortcuts: **V** select,
+**P** ink, **E** eraser, **R** rectangle, **D** diamond, **O** ellipse, **A** arrow,
+**L** line, **T** text, and **K** laser. Standard Excalidraw shortcuts such as
+Space-to-pan and Ctrl/Cmd+Z undo remain available.
+
 ### Opening the Inspector
 
 - Click the **"Stylus Inspector"** button in the top toolbar, OR

@@ -1,11 +1,19 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import { FileText, Image as ImageIcon, Terminal } from 'lucide-react'
 import { ExcalidrawCanvasAdapter } from './ExcalidrawCanvasAdapter'
+import { StylusDock } from './StylusDock'
 import { IconRegistry, INITIAL_ICON_DEFINITIONS } from '@core/icons/icon-registry'
 import { placeIcon } from '@core/icons/icon-placement'
+import {
+  DEFAULT_STYLUS_PREFERENCES,
+  getPenContactTool,
+  shouldRejectPointerForPalm,
+  type StylusPreferences
+} from '@core/canvas/stylus-controls'
+import type { CanvasToolType } from '@core/canvas/canvas-adapter'
 import '@excalidraw/excalidraw/index.css'
 
 interface CanvasViewProps {
@@ -18,9 +26,23 @@ interface CanvasViewProps {
   onImportPdf?: () => void
   onImportImage?: () => void
   onOpenCodeSnippetModal?: () => void
+  onRegisterToolSetter?: (setter: (tool: CanvasToolType) => void) => void
+  shortcutLabel?: (id: string) => string | undefined
 }
 
 const ICON_REGISTRY = new IconRegistry(INITIAL_ICON_DEFINITIONS)
+const STYLUS_PREFERENCES_KEY = 'canvastube_stylus_preferences'
+
+const loadStylusPreferences = (): StylusPreferences => {
+  try {
+    const saved = localStorage.getItem(STYLUS_PREFERENCES_KEY)
+    if (!saved) return DEFAULT_STYLUS_PREFERENCES
+    const parsed = JSON.parse(saved) as Partial<StylusPreferences>
+    return { ...DEFAULT_STYLUS_PREFERENCES, ...parsed }
+  } catch {
+    return DEFAULT_STYLUS_PREFERENCES
+  }
+}
 
 export const CanvasView: React.FC<CanvasViewProps> = ({
   adapter,
@@ -31,10 +53,17 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   onDropPdfPage,
   onImportPdf,
   onImportImage,
-  onOpenCodeSnippetModal
+  onOpenCodeSnippetModal,
+  onRegisterToolSetter,
+  shortcutLabel
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [toolbarEl, setToolbarEl] = useState<HTMLElement | null>(null)
+  const activePenPointers = useRef(new Set<number>())
+  const temporaryEraserTools = useRef(new Map<number, CanvasToolType>())
+  const [stylusPreferences, setStylusPreferences] = useState<StylusPreferences>(loadStylusPreferences)
+  const [activeTool, setActiveTool] = useState<CanvasToolType>(() => adapter.getTool())
+  const [lastInput, setLastInput] = useState<{ pointerType: string; pressure: number } | null>(null)
 
   // Find the Excalidraw toolbar stack container and attach custom dock actions
   useEffect(() => {
@@ -59,8 +88,100 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
     return () => observer.disconnect()
   }, [toolbarEl])
 
-  const handlePointer = (e: React.PointerEvent<HTMLDivElement>) => {
+  const updateStylusPreferences = useCallback((update: Partial<StylusPreferences>) => {
+    setStylusPreferences((current) => {
+      const next = { ...current, ...update }
+      try {
+        localStorage.setItem(STYLUS_PREFERENCES_KEY, JSON.stringify(next))
+      } catch {
+        // A full or unavailable localStorage should not affect drawing.
+      }
+      return next
+    })
+  }, [])
+
+  const setCanvasTool = useCallback(
+    (tool: CanvasToolType) => {
+      adapter.setTool(tool)
+      setActiveTool(tool)
+    },
+    [adapter]
+  )
+
+  useEffect(() => {
+    onRegisterToolSetter?.(setCanvasTool)
+    return () => onRegisterToolSetter?.(() => undefined)
+  }, [onRegisterToolSetter, setCanvasTool])
+
+  useEffect(() => {
+    const registerKeyboardTarget = () => {
+      const target = containerRef.current?.querySelector<HTMLElement>('.excalidraw-container') || null
+      adapter.setKeyboardTarget(target)
+    }
+
+    registerKeyboardTarget()
+    const observer = new MutationObserver(registerKeyboardTarget)
+    if (containerRef.current) observer.observe(containerRef.current, { childList: true, subtree: true })
+
+    return () => {
+      observer.disconnect()
+      adapter.setKeyboardTarget(null)
+    }
+  }, [adapter])
+
+  const blockPalm = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (
+        shouldRejectPointerForPalm(
+          e.pointerType,
+          activePenPointers.current.size,
+          stylusPreferences.palmRejection
+        )
+      ) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
+        return true
+      }
+      return false
+    },
+    [stylusPreferences.palmRejection]
+  )
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (blockPalm(e)) return
+
+    if (e.pointerType === 'pen') {
+      activePenPointers.current.add(e.pointerId)
+      const nextTool = getPenContactTool(e, stylusPreferences)
+      if (nextTool) {
+        if (nextTool === 'eraser') {
+          temporaryEraserTools.current.set(e.pointerId, adapter.getTool())
+        }
+        setCanvasTool(nextTool)
+      }
+    }
+    setLastInput({ pointerType: e.pointerType, pressure: e.pressure })
     adapter.recordPointerEvent(e)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (blockPalm(e)) return
+    setLastInput({ pointerType: e.pointerType, pressure: e.pressure })
+    adapter.recordPointerEvent(e)
+  }
+
+  const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (blockPalm(e)) return
+    adapter.recordPointerEvent(e)
+    if (e.pointerType !== 'pen') return
+
+    activePenPointers.current.delete(e.pointerId)
+    const previousTool = temporaryEraserTools.current.get(e.pointerId)
+    temporaryEraserTools.current.delete(e.pointerId)
+    if (previousTool && activePenPointers.current.size === 0) {
+      setCanvasTool(previousTool)
+    }
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -114,9 +235,10 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   return (
     <div
       ref={containerRef}
-      onPointerDownCapture={handlePointer}
-      onPointerMoveCapture={handlePointer}
-      onPointerUpCapture={handlePointer}
+      onPointerDownCapture={handlePointerDown}
+      onPointerMoveCapture={handlePointerMove}
+      onPointerUpCapture={handlePointerEnd}
+      onPointerCancelCapture={handlePointerEnd}
       onDragOverCapture={handleDragOver}
       onDropCapture={handleDrop}
       style={{
@@ -155,6 +277,17 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
         }}
       />
 
+      {!isRecordingMode && (
+        <StylusDock
+          preferences={stylusPreferences}
+          activeTool={activeTool}
+          lastInput={lastInput}
+          onUpdatePreferences={updateStylusPreferences}
+          onSetTool={setCanvasTool}
+          shortcutLabel={shortcutLabel}
+        />
+      )}
+
       {/* Portaled Dock Extensions: PDF / Slides & Code Card */}
       {toolbarEl &&
         createPortal(
@@ -173,7 +306,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
               type="button"
               className="canvastube-dock-btn"
               onClick={onImportImage}
-              title="Import Image onto Canvas"
+              title={`Import Image onto Canvas${shortcutLabel?.('tool.image') ? ` (${shortcutLabel('tool.image')})` : ''}`}
               aria-label="Import Image"
             >
               <ImageIcon size={17} color="#38bdf8" />

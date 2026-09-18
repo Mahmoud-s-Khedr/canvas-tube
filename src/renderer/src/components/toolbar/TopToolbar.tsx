@@ -15,6 +15,7 @@ import {
   FileDown,
   Radio,
   Clock,
+  Settings2,
 } from 'lucide-react'
 
 interface TopToolbarProps {
@@ -38,6 +39,8 @@ interface TopToolbarProps {
   onSaveProjectAs: () => void
   onOpenExport: () => void
   onToggleDevTools: () => void
+  onOpenShortcutSettings: () => void
+  shortcutLabel?: (id: string) => string | undefined
   onOpenChapters?: () => void
   chaptersCount?: number
   onOpenObs?: () => void
@@ -67,6 +70,8 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   onSaveProjectAs,
   onOpenExport,
   onToggleDevTools,
+  onOpenShortcutSettings,
+  shortcutLabel,
   onOpenChapters,
   chaptersCount = 0,
   onOpenObs,
@@ -297,7 +302,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         <button
           onClick={onNewProject}
           style={buttonStyle}
-          title="New Project (Ctrl+N)"
+          title={`New Project${shortcutLabel?.('project.new') ? ` (${shortcutLabel('project.new')})` : ''}`}
         >
           <FilePlus size={15} />
           <span>New</span>
@@ -306,7 +311,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         <button
           onClick={onOpenProject}
           style={buttonStyle}
-          title="Open Project Directory (Ctrl+O)"
+          title={`Open Project Directory${shortcutLabel?.('project.open') ? ` (${shortcutLabel('project.open')})` : ''}`}
         >
           <FolderOpen size={15} />
           <span>Open</span>
@@ -326,7 +331,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
               borderRight: '1px solid #1d4ed8',
               paddingRight: 8
             }}
-            title="Save Project (Ctrl+S)"
+            title={`Save Project${shortcutLabel?.('project.save') ? ` (${shortcutLabel('project.save')})` : ''}`}
           >
             <Save size={15} />
             <span>Save</span>
@@ -376,7 +381,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
               >
                 <Save size={14} color="#60a5fa" />
                 <span style={{ flex: 1, textAlign: 'left' }}>Save</span>
-                <span style={{ color: '#71717a', fontSize: 10, marginLeft: 8 }}>Ctrl+S</span>
+                <span style={{ color: '#71717a', fontSize: 10, marginLeft: 8 }}>{shortcutLabel?.('project.save')}</span>
               </button>
               <button
                 onClick={() => {
@@ -389,7 +394,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
               >
                 <FileDown size={14} color="#a1a1aa" />
                 <span style={{ flex: 1, textAlign: 'left' }}>Save As...</span>
-                <span style={{ color: '#71717a', fontSize: 10, marginLeft: 8 }}>Ctrl+Shift+S</span>
+                <span style={{ color: '#71717a', fontSize: 10, marginLeft: 8 }}>{shortcutLabel?.('project.saveAs')}</span>
               </button>
             </div>
           )}
@@ -405,7 +410,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
             borderColor: '#3b82f6',
             color: '#93c5fd'
           }}
-          title="Production Diagram Export (PNG, 4K/8K, SVG, Marquee) [Ctrl+Shift+E]"
+          title={`Production Diagram Export (PNG, 4K/8K, SVG, Marquee)${shortcutLabel?.('project.export') ? ` [${shortcutLabel('project.export')}]` : ''}`}
         >
           <Download size={15} color="#60a5fa" />
           <span>Export</span>
@@ -494,7 +499,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
               color: isBookmarksOpen ? '#93c5fd' : '#a1a1aa',
               cursor: 'pointer'
             }}
-            title="Quick Bookmark Current View into Tour (Ctrl+B)"
+            title={`Quick Bookmark Current View into Tour${shortcutLabel?.('presentation.bookmark') ? ` (${shortcutLabel('presentation.bookmark')})` : ''}`}
           >
             <Plus size={14} color="#60a5fa" />
           </button>
@@ -646,7 +651,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
             backgroundColor: isInspectorOpen ? '#1e3a8a' : '#27272a',
             color: isInspectorOpen ? '#93c5fd' : '#a1a1aa'
           }}
-          title="Toggle Stylus / Pointer Inspector (Ctrl+Shift+I)"
+          title={`Toggle Stylus / Pointer Inspector${shortcutLabel?.('presentation.inspector') ? ` (${shortcutLabel('presentation.inspector')})` : ''}`}
         >
           <Activity size={15} />
           <span>Stylus Inspector</span>
@@ -661,10 +666,19 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
             fontWeight: 600,
             padding: '6px 12px'
           }}
-          title="Enter Clean Recording Mode (Ctrl+Shift+R or F10)"
+          title={`Enter Clean Recording Mode${shortcutLabel?.('presentation.recordingMode') ? ` (${shortcutLabel('presentation.recordingMode')})` : ''}`}
         >
           <Video size={15} />
           <span>Recording Mode</span>
+        </button>
+
+        <button
+          onClick={onOpenShortcutSettings}
+          style={{ ...buttonStyle, padding: '6px 8px' }}
+          title="Shortcut Settings"
+          aria-label="Open shortcut settings"
+        >
+          <Settings2 size={15} />
         </button>
 
         <button
