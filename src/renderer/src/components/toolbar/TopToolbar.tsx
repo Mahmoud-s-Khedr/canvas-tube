@@ -33,6 +33,7 @@ interface TopToolbarProps {
   onAddBookmark: () => void
   onNewProject: () => void
   onOpenProject: () => void
+  onRenameProject: (title: string) => void
   onSaveProject: () => void
   onSaveProjectAs: () => void
   onOpenExport: () => void
@@ -61,6 +62,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   onAddBookmark,
   onNewProject,
   onOpenProject,
+  onRenameProject,
   onSaveProject,
   onSaveProjectAs,
   onOpenExport,
@@ -74,7 +76,43 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
 }) => {
   const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false)
   const [isChromaMenuOpen, setIsChromaMenuOpen] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(projectTitle)
   const saveMenuRef = useRef<HTMLDivElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const titleEditFinishedRef = useRef(false)
+
+  useEffect(() => {
+    if (!isEditingTitle) {
+      setTitleDraft(projectTitle)
+    }
+  }, [isEditingTitle, projectTitle])
+
+  useEffect(() => {
+    if (isEditingTitle) {
+      titleInputRef.current?.focus()
+      titleInputRef.current?.select()
+    }
+  }, [isEditingTitle])
+
+  const beginTitleEdit = () => {
+    titleEditFinishedRef.current = false
+    setTitleDraft(projectTitle)
+    setIsEditingTitle(true)
+  }
+
+  const commitTitleEdit = () => {
+    if (titleEditFinishedRef.current) return
+    titleEditFinishedRef.current = true
+    onRenameProject(titleDraft)
+    setIsEditingTitle(false)
+  }
+
+  const cancelTitleEdit = () => {
+    titleEditFinishedRef.current = true
+    setTitleDraft(projectTitle)
+    setIsEditingTitle(false)
+  }
 
   // Close Save dropdown on click outside
   useEffect(() => {
@@ -184,8 +222,58 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         <div style={{ height: 18, width: 1, backgroundColor: '#3f3f46' }} />
 
         {/* Project Name & Path indicator */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#e4e4e7' }}>{projectTitle}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {isEditingTitle ? (
+            <input
+              ref={titleInputRef}
+              value={titleDraft}
+              onChange={(event) => setTitleDraft(event.target.value)}
+              onBlur={commitTitleEdit}
+              onKeyDown={(event) => {
+                event.stopPropagation()
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  commitTitleEdit()
+                } else if (event.key === 'Escape') {
+                  event.preventDefault()
+                  cancelTitleEdit()
+                }
+              }}
+              aria-label="Canvas title"
+              maxLength={120}
+              style={{
+                width: 220,
+                padding: '3px 6px',
+                backgroundColor: '#27272a',
+                border: '1px solid #60a5fa',
+                borderRadius: 4,
+                color: '#f4f4f5',
+                fontSize: 13,
+                fontWeight: 600,
+                outline: 'none'
+              }}
+            />
+          ) : (
+            <button
+              onClick={beginTitleEdit}
+              title="Rename canvas"
+              aria-label={`Rename canvas: ${projectTitle}`}
+              style={{
+                padding: '3px 5px',
+                margin: '0 -5px',
+                background: 'transparent',
+                border: '1px solid transparent',
+                borderRadius: 4,
+                color: '#e4e4e7',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'text',
+                lineHeight: 1.25
+              }}
+            >
+              {projectTitle}
+            </button>
+          )}
           {projectDir && (
             <span
               style={{

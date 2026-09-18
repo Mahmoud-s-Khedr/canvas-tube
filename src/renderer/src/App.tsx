@@ -129,6 +129,10 @@ export const App: React.FC = () => {
     []
   )
 
+  useEffect(() => {
+    document.title = `${manifest.title} — CanvasTube`
+  }, [manifest.title])
+
   // Recording session elapsed timer
   useEffect(() => {
     let interval: any
@@ -234,6 +238,20 @@ export const App: React.FC = () => {
       }
     }
   }, [adapter])
+
+  const handleRenameProject = useCallback(
+    (title: string) => {
+      const trimmedTitle = title.trim()
+      if (!trimmedTitle) {
+        showToast('Canvas title cannot be empty.', 'warning')
+        return
+      }
+
+      setManifest((previous) => ({ ...previous, title: trimmedTitle }))
+      showToast(`Canvas renamed to "${trimmedTitle}"`, 'success')
+    },
+    [showToast]
+  )
 
   const handleSaveProject = useCallback(async () => {
     if (!window.desktopApi?.saveProject) return
@@ -813,6 +831,7 @@ export const App: React.FC = () => {
         onAddBookmark={() => handleAddBookmark()}
         onNewProject={handleNewProject}
         onOpenProject={handleOpenProject}
+        onRenameProject={handleRenameProject}
         onSaveProject={handleSaveProject}
         onSaveProjectAs={handleSaveProjectAs}
         onOpenExport={() => setIsExportModalOpen(true)}
