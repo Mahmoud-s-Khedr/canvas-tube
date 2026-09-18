@@ -83,6 +83,11 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
       // 1. Check if dropped item is a PDF slide page
       if (data?.type === 'pdf-page' && data.pageNumber) {
         e.preventDefault()
+        // Excalidraw also listens for native image drops. Stop it seeing the
+        // thumbnail's browser drag payload, otherwise it creates a second,
+        // tiny image alongside the intended PDF page.
+        e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
         const scenePoint = adapter.screenToScene(e.clientX, e.clientY)
         if (onDropPdfPage) {
           onDropPdfPage(data.pageNumber, scenePoint.x, scenePoint.y)
@@ -112,8 +117,8 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
       onPointerDownCapture={handlePointer}
       onPointerMoveCapture={handlePointer}
       onPointerUpCapture={handlePointer}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
+      onDragOverCapture={handleDragOver}
+      onDropCapture={handleDrop}
       style={{
         position: 'absolute',
         top: isRecordingMode ? 0 : 48,

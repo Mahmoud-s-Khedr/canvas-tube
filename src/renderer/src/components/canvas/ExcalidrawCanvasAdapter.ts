@@ -245,6 +245,26 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     })
   }
 
+  public setObjectsLockedByCustomData(criteria: Record<string, unknown>, locked: boolean): number {
+    if (!this.api) return 0
+
+    let changed = 0
+    const elements = this.api.getSceneElements().map((element: any) => {
+      const customData = element.customData as Record<string, unknown> | undefined
+      const matches =
+        customData && Object.entries(criteria).every(([key, value]) => customData[key] === value)
+
+      if (!matches || element.locked === locked) return element
+      changed += 1
+      return { ...element, locked }
+    })
+
+    if (changed > 0) {
+      this.api.updateScene({ elements })
+    }
+    return changed
+  }
+
   public getCamera(): CameraState {
     if (!this.api) return { x: 0, y: 0, zoom: 1 }
     const state = this.api.getAppState()

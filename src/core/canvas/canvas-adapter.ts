@@ -102,6 +102,9 @@ export interface CanvasAdapter {
   addFile(file: { id: string; mimeType: string; dataURL: string; created: number }): void
   pruneUnusedFiles?(): number
 
+  /** Update the lock state of elements created with matching metadata. */
+  setObjectsLockedByCustomData?(criteria: Record<string, unknown>, locked: boolean): number
+
   // Background / Chroma-key methods
   getBackgroundColor(): string
   setBackgroundColor(color: string): void

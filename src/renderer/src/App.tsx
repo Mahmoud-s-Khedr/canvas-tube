@@ -635,7 +635,9 @@ export const App: React.FC = () => {
           width: targetWidth,
           height: targetHeight,
           fileId,
-          locked: true,
+          // Pages are regular canvas objects by default, so a dropped page can be
+          // selected, moved, resized, or locked using the document dock.
+          locked: false,
           customData: {
             type: 'pdf-slide',
             docId: activeDocument?.id,

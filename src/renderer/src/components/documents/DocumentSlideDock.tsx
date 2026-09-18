@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { DocumentEntry } from '@core/project/project-manifest'
 import { CanvasAdapter } from '@core/canvas/canvas-adapter'
+import type { CanvasShapeInput } from '@core/canvas/canvas-adapter'
 import { PdfService } from '../../services/pdf-service'
 import {
   FileText,
@@ -10,20 +11,20 @@ import {
   Rows,
   Columns,
   Maximize2,
-  Lock
+  Lock,
+  Unlock
 } from 'lucide-react'
 
 // Rendering hundreds of canvases and keeping their PNG data URLs in React state makes
 // large PDFs consume excessive CPU and memory. Keep previews close to the selected page.
 const THUMBNAIL_WINDOW = 12
-const MAX_BULK_INSERT_PAGES = 30
 const SLIDE_WIDTH = 800
 const HORIZONTAL_SLIDE_SPACING = 80
 const VERTICAL_SLIDE_SPACING = 100
+const INSERT_BATCH_SIZE = 6
 
-interface RenderedSlide {
+interface SlideMetric {
   pageNumber: number
-  dataUrl: string
   height: number
 }
 
@@ -47,6 +48,8 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
   const [isInserting, setIsInserting] = useState<boolean>(false)
   const [isMinimized, setIsMinimized] = useState<boolean>(false)
   const [insertError, setInsertError] = useState<string | null>(null)
+  const [autoLockPages, setAutoLockPages] = useState<boolean>(false)
+  const [insertProgress, setInsertProgress] = useState<{ completed: number; total: number } | null>(null)
   const requestedThumbnailPages = useRef<Set<number>>(new Set())
 
   const numPages = pdfDoc?.numPages ?? documentEntry?.pageCount ?? 0
@@ -124,7 +127,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
           width: targetWidth,
           height: targetHeight,
           fileId,
-          locked: true,
+          locked: autoLockPages,
           customData: {
             type: 'pdf-slide',
             docId: documentEntry?.id,
@@ -138,7 +141,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
         setIsInserting(false)
       }
     },
-    [pdfDoc, adapter, documentEntry]
+    [pdfDoc, adapter, documentEntry, autoLockPages]
   )
 
   const handleInsertCurrentPage = async () => {
@@ -147,36 +150,45 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
     await insertPageAtCoordinates(selectedPage, sceneCenter.x, sceneCenter.y)
   }
 
-  const handleInsertAllHorizontal = async () => {
-    if (!pdfDoc || !adapter || numPages > MAX_BULK_INSERT_PAGES) return
+  const handleInsertAll = async (direction: 'horizontal' | 'vertical') => {
+    if (!pdfDoc || !adapter || numPages === 0) return
     setIsInserting(true)
     setInsertError(null)
+    setInsertProgress({ completed: 0, total: numPages })
 
     try {
       const sceneCenter = adapter.getViewportCenter()
-      const slides: RenderedSlide[] = []
+      const slides: SlideMetric[] = []
       for (let p = 1; p <= numPages; p++) {
-        const rendered = await PdfService.renderPage(pdfDoc, p, 1.8)
-        slides.push({
-          pageNumber: p,
-          dataUrl: rendered.dataUrl,
-          height: Math.round(SLIDE_WIDTH / rendered.aspectRatio)
-        })
+        const page = await pdfDoc.getPage(p)
+        try {
+          const viewport = page.getViewport({ scale: 1 })
+          slides.push({ pageNumber: p, height: Math.round(SLIDE_WIDTH / (viewport.width / viewport.height)) })
+        } finally {
+          page.cleanup()
+        }
+        // Let the dock repaint while it reads metadata for very long documents.
+        if (p % 25 === 0) await new Promise((resolve) => setTimeout(resolve, 0))
       }
 
       const totalWidth =
         slides.length * SLIDE_WIDTH + Math.max(0, slides.length - 1) * HORIZONTAL_SLIDE_SPACING
+      const totalHeight = slides.reduce((sum, slide) => sum + slide.height, 0) +
+        Math.max(0, slides.length - 1) * VERTICAL_SLIDE_SPACING
       let currentX = sceneCenter.x - totalWidth / 2
+      let currentY = sceneCenter.y - totalHeight / 2
       const batchId = Date.now()
-      const shapes = slides.map((slide) => {
+      let shapes: CanvasShapeInput[] = []
+
+      const createSlideShape = (slide: SlideMetric) => {
         const shape = {
           type: 'image' as const,
-          x: Math.round(currentX),
-          y: Math.round(sceneCenter.y - slide.height / 2),
+          x: Math.round(direction === 'horizontal' ? currentX : sceneCenter.x - SLIDE_WIDTH / 2),
+          y: Math.round(direction === 'horizontal' ? sceneCenter.y - slide.height / 2 : currentY),
           width: SLIDE_WIDTH,
           height: slide.height,
           fileId: `pdf_page_${documentEntry?.id || 'doc'}_p${slide.pageNumber}_${batchId}`,
-          locked: true,
+          locked: autoLockPages,
           customData: {
             type: 'pdf-slide',
             docId: documentEntry?.id,
@@ -184,89 +196,54 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
           }
         }
         currentX += SLIDE_WIDTH + HORIZONTAL_SLIDE_SPACING
+        currentY += slide.height + VERTICAL_SLIDE_SPACING
         return shape
-      })
+      }
 
-      slides.forEach((slide, index) => {
+      for (let index = 0; index < slides.length; index++) {
+        const slide = slides[index]
+        const rendered = await PdfService.renderPage(pdfDoc, slide.pageNumber, 1.8)
+        const shape = createSlideShape(slide)
         adapter.addFile({
-          id: shapes[index].fileId!,
+          id: shape.fileId!,
           mimeType: 'image/png',
-          dataURL: slide.dataUrl,
+          dataURL: rendered.dataUrl,
           created: batchId
         })
-      })
-      if (adapter.addObjects) {
-        adapter.addObjects(shapes)
-      } else {
-        shapes.forEach((shape) => adapter.addObject(shape))
+        shapes.push(shape)
+
+        if (shapes.length === INSERT_BATCH_SIZE || index === slides.length - 1) {
+          if (adapter.addObjects) adapter.addObjects(shapes)
+          else shapes.forEach((nextShape) => adapter.addObject(nextShape))
+          shapes = []
+        }
+        setInsertProgress({ completed: index + 1, total: slides.length })
+        // Rendering and PNG encoding are expensive. Yield between pages so the
+        // canvas remains responsive and progress is visible.
+        await new Promise((resolve) => setTimeout(resolve, 0))
       }
     } catch (err) {
-      console.error('[DocumentSlideDock] Failed inserting pages horizontally:', err)
-      setInsertError('Could not insert all pages horizontally.')
+      console.error(`[DocumentSlideDock] Failed inserting pages ${direction}:`, err)
+      setInsertError(`Could not insert all pages ${direction === 'horizontal' ? 'horizontally' : 'vertically'}.`)
     } finally {
       setIsInserting(false)
+      setInsertProgress(null)
     }
   }
 
-  const handleInsertAllVertical = async () => {
-    if (!pdfDoc || !adapter || numPages > MAX_BULK_INSERT_PAGES) return
-    setIsInserting(true)
-    setInsertError(null)
+  const handleInsertAllHorizontal = () => handleInsertAll('horizontal')
+  const handleInsertAllVertical = () => handleInsertAll('vertical')
 
-    try {
-      const sceneCenter = adapter.getViewportCenter()
-      const slides: RenderedSlide[] = []
-      for (let p = 1; p <= numPages; p++) {
-        const rendered = await PdfService.renderPage(pdfDoc, p, 1.8)
-        slides.push({
-          pageNumber: p,
-          dataUrl: rendered.dataUrl,
-          height: Math.round(SLIDE_WIDTH / rendered.aspectRatio)
-        })
-      }
-
-      const totalHeight =
-        slides.reduce((sum, slide) => sum + slide.height, 0) +
-        Math.max(0, slides.length - 1) * VERTICAL_SLIDE_SPACING
-      let currentY = sceneCenter.y - totalHeight / 2
-      const batchId = Date.now()
-      const shapes = slides.map((slide) => {
-        const shape = {
-          type: 'image' as const,
-          x: Math.round(sceneCenter.x - SLIDE_WIDTH / 2),
-          y: Math.round(currentY),
-          width: SLIDE_WIDTH,
-          height: slide.height,
-          fileId: `pdf_page_${documentEntry?.id || 'doc'}_p${slide.pageNumber}_${batchId}`,
-          locked: true,
-          customData: {
-            type: 'pdf-slide',
-            docId: documentEntry?.id,
-            pageNumber: slide.pageNumber
-          }
-        }
-        currentY += slide.height + VERTICAL_SLIDE_SPACING
-        return shape
-      })
-
-      slides.forEach((slide, index) => {
-        adapter.addFile({
-          id: shapes[index].fileId!,
-          mimeType: 'image/png',
-          dataURL: slide.dataUrl,
-          created: batchId
-        })
-      })
-      if (adapter.addObjects) {
-        adapter.addObjects(shapes)
-      } else {
-        shapes.forEach((shape) => adapter.addObject(shape))
-      }
-    } catch (err) {
-      console.error('[DocumentSlideDock] Failed inserting pages vertically:', err)
-      setInsertError('Could not insert all pages vertically.')
-    } finally {
-      setIsInserting(false)
+  const handleUnlockDocumentPages = () => {
+    if (!adapter?.setObjectsLockedByCustomData || !documentEntry) return
+    const unlocked = adapter.setObjectsLockedByCustomData(
+      { type: 'pdf-slide', docId: documentEntry.id },
+      false
+    )
+    if (unlocked === 0) {
+      setInsertError('No locked pages from this document are on the canvas.')
+    } else {
+      setInsertError(null)
     }
   }
 
@@ -380,22 +357,30 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
           >
             {numPages} {numPages === 1 ? 'page' : 'pages'}
           </span>
-          <span
-            title="Every inserted PDF page is locked so you can ink over it without moving it."
+          <button
+            type="button"
+            onClick={() => setAutoLockPages((previous) => !previous)}
+            title={
+              autoLockPages
+                ? 'New PDF pages will be locked. Click to make new pages movable.'
+                : 'New PDF pages are movable. Click to lock new pages for inking.'
+            }
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 4,
               fontSize: 10,
-              color: '#10b981',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              color: autoLockPages ? '#10b981' : '#a1a1aa',
+              backgroundColor: autoLockPages ? 'rgba(16, 185, 129, 0.1)' : '#27272a',
               padding: '2px 6px',
               borderRadius: 4,
-              border: '1px solid rgba(16, 185, 129, 0.2)'
+              border: autoLockPages ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid #3f3f46',
+              cursor: 'pointer'
             }}
           >
-            <Lock size={10} /> Auto-Locked for Inking
-          </span>
+            {autoLockPages ? <Lock size={10} /> : <Unlock size={10} />}
+            {autoLockPages ? 'Lock New Pages' : 'Movable Pages'}
+          </button>
           {insertError && (
             <span role="alert" style={{ fontSize: 10, color: '#fca5a5' }}>
               {insertError}
@@ -428,8 +413,28 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
           </button>
 
           <button
+            onClick={handleUnlockDocumentPages}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 8px',
+              backgroundColor: '#27272a',
+              border: '1px solid #3f3f46',
+              borderRadius: 6,
+              color: '#e4e4e7',
+              fontSize: 11,
+              cursor: 'pointer'
+            }}
+            title="Unlock every page from this document that is already on the canvas"
+          >
+            <Unlock size={13} />
+            <span>Unlock Pages</span>
+          </button>
+
+          <button
             onClick={handleInsertAllHorizontal}
-            disabled={isInserting || numPages > MAX_BULK_INSERT_PAGES}
+            disabled={isInserting || numPages === 0}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -443,9 +448,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
               cursor: isInserting ? 'wait' : 'pointer'
             }}
             title={
-              numPages > MAX_BULK_INSERT_PAGES
-                ? `Bulk insertion is limited to ${MAX_BULK_INSERT_PAGES} pages. Insert individual pages instead.`
-                : 'Place all pages side-by-side on canvas'
+              'Place all pages side-by-side on canvas. Large documents insert progressively.'
             }
           >
             <Columns size={13} />
@@ -454,7 +457,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
 
           <button
             onClick={handleInsertAllVertical}
-            disabled={isInserting || numPages > MAX_BULK_INSERT_PAGES}
+            disabled={isInserting || numPages === 0}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -468,9 +471,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
               cursor: isInserting ? 'wait' : 'pointer'
             }}
             title={
-              numPages > MAX_BULK_INSERT_PAGES
-                ? `Bulk insertion is limited to ${MAX_BULK_INSERT_PAGES} pages. Insert individual pages instead.`
-                : 'Place all pages vertically top-to-bottom on canvas'
+              'Place all pages vertically top-to-bottom on canvas. Large documents insert progressively.'
             }
           >
             <Rows size={13} />
@@ -508,6 +509,15 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
           </button>
         </div>
       </div>
+
+      {insertProgress && (
+        <div
+          role="status"
+          style={{ padding: '5px 14px', fontSize: 11, color: '#93c5fd', backgroundColor: '#172554' }}
+        >
+          Adding pages: {insertProgress.completed} / {insertProgress.total}
+        </div>
+      )}
 
       {/* Slide Thumbnails Scroll Track */}
       <div
