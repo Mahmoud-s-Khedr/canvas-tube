@@ -15,6 +15,7 @@
     "build:win:nsis": "electron-vite build && electron-builder --win nsis",
     "build:win:all": "electron-vite build && electron-builder --win",
     "preview": "electron-vite preview",
+    "postinstall": "node scripts/patch-excalidraw-font-fallback.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "sync:stencils": "node scripts/sync-official-icons.mjs",
