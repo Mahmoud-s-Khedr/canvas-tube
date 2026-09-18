@@ -1,3 +1,4 @@
+import '../platform-polyfills'
 import * as pdfjsLib from 'pdfjs-dist'
 // @ts-expect-error - pdf.worker.mjs is an ES module bundled with pdfjs-dist
 import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs'

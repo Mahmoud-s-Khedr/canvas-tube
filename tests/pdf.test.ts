@@ -107,6 +107,14 @@ describe('PdfService Base64 Loading and In-Memory Worker', () => {
     PdfService.clearCache()
   })
 
+  it('installs the PDF.js Map compatibility helper', () => {
+    const map = new Map<string, number>()
+    const value = map.getOrInsertComputed('page', () => 1)
+
+    expect(value).toBe(1)
+    expect(map.getOrInsertComputed('page', () => 2)).toBe(1)
+  })
+
   it('loads valid base64 PDF and retrieves document properties', async () => {
     const doc = await PdfService.loadPdfFromBase64(MINIMAL_PDF_BASE64, 'test-doc-1')
     expect(doc).toBeDefined()

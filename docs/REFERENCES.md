@@ -33,7 +33,7 @@ CanvasTube draws architectural inspiration from several outstanding open-source 
 - **Isolation Strategy**:
   - Excalidraw is encapsulated behind `CanvasAdapter` (`ExcalidrawCanvasAdapter.ts`).
   - No deep Excalidraw types leak into high-level features like the architecture stencil sidebar or project manifest service.
-  - Offline assets: `@excalidraw/excalidraw` tries by default to fetch fonts from `esm.run`. In CanvasTube, all font assets are bundled locally in `src/renderer/public/fonts/` with `window.EXCALIDRAW_ASSET_PATH = '/fonts/'`, ensuring 100% offline reliability.
+  - Offline assets: `@excalidraw/excalidraw` tries by default to fetch fonts from `esm.run`. In CanvasTube, all font assets are bundled locally in `src/renderer/public/fonts/` and `window.EXCALIDRAW_ASSET_PATH` is resolved from the renderer document, ensuring 100% offline reliability.
 
 ---
 

@@ -114,7 +114,7 @@ export interface CanvasAdapter {
 
 - **Element Construction**: Translates generic shape inputs (`rectangle`, `diamond`, `ellipse`, `arrow`, `line`, `text`, `image`) into Excalidraw skeleton formats via Excalidraw's `convertToExcalidrawElements` utility.
 - **Coordinate Space Conversion**: Normalizes client mouse/stylus coordinates into infinite canvas scene space using viewport camera offsets (`scrollX`, `scrollY`) and zoom factors (`screenToScene`).
-- **Offline Fonts**: Sets `window.EXCALIDRAW_ASSET_PATH = '/fonts/'` and bundles offline TTF/WOFF2 font assets locally, preventing remote network requests to third-party CDNs.
+- **Offline Fonts**: Resolves `window.EXCALIDRAW_ASSET_PATH` from the renderer document to its local `fonts/` directory and bundles TTF/WOFF2 assets locally, preventing remote network requests to third-party CDNs.
 
 ---
 

@@ -60,7 +60,7 @@
   - [x] Define initial [`IconRegistry`](file:///home/mk/Projects/CV_projects/canvas-tube/src/core/icons/icon-registry.ts) catalog structure and SVG parser.
 - [x] **Offline Asset Vendoring**
   - [x] Self-host all Excalidraw web fonts (`Excalifont`, `Virgil`, `Assistant`, `CascadiaCode`, `ComicShanns`, `Xiaolai`) in `src/renderer/public/fonts/`.
-  - [x] Configure `window.EXCALIDRAW_ASSET_PATH = '/fonts/'` to guarantee zero internet dependency.
+  - [x] Resolve `window.EXCALIDRAW_ASSET_PATH` from the renderer document so packaged builds use the bundled fonts without an internet dependency.
 
 ---
 
