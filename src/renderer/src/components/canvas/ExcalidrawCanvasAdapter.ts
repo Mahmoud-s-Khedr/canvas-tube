@@ -29,6 +29,10 @@ import {
   viewportCoordsToSceneCoords
 } from '@excalidraw/excalidraw'
 import { IconRegistry } from '@core/icons/icon-registry'
+import {
+  createCanvasPointerSnapshot,
+  type CanvasPointerEventType
+} from '@core/canvas/pointer-diagnostics'
 
 
 function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
@@ -170,7 +174,10 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     this.changeListener = listener
   }
 
-  public recordPointerEvent(event: React.PointerEvent<HTMLElement> | PointerEvent): void {
+  public recordPointerEvent(
+    event: React.PointerEvent<HTMLElement> | PointerEvent,
+    eventType: CanvasPointerEventType
+  ): void {
     // If user presses a button / stylus touch on canvas while camera is animating, stop animation smoothly
     if (event.buttons > 0) {
       this.stopCameraAnimation()
@@ -178,31 +185,11 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
 
     if (!this.pointerListener) return
 
-    // A tablet can report several hardware samples for one browser event.
-    // Preserve those coalesced samples for diagnostics instead of making a
-    // high-rate pen look choppy in the inspector. Excalidraw receives the
-    // original browser event and retains native pressure for freehand strokes.
+    // Record exactly one snapshot per browser event. Coalesced samples are
+    // counted for diagnostics only; Excalidraw continues receiving the
+    // original event unchanged for its native freehand processing.
     const nativeEvent = 'nativeEvent' in event ? event.nativeEvent : event
-    const samples = nativeEvent.getCoalescedEvents?.() || [nativeEvent]
-
-    for (const sample of samples) {
-      const point = this.screenToScene(sample.clientX, sample.clientY)
-      this.pointerListener({
-        pointerType: sample.pointerType,
-        pressure: sample.pressure,
-        tiltX: sample.tiltX,
-        tiltY: sample.tiltY,
-        twist: sample.twist,
-        clientX: sample.clientX,
-        clientY: sample.clientY,
-        canvasX: Math.round(point.x),
-        canvasY: Math.round(point.y),
-        buttons: sample.buttons,
-        pointerId: sample.pointerId,
-        isPrimary: sample.isPrimary,
-        timestamp: sample.timeStamp
-      })
-    }
+    this.pointerListener(createCanvasPointerSnapshot(nativeEvent, eventType, this.screenToScene.bind(this)))
   }
 
   public addObject(shape: CanvasShapeInput): ObjectId {

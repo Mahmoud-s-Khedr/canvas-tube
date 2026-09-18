@@ -40,7 +40,9 @@ export class DrawingSessionSimulator {
       const clientY = baseY + Math.sin(i * 0.2) * 20 + Math.random() * 2
 
       snapshots.push({
+        eventType: 'pointermove',
         pointerType: 'pen',
+        button: -1,
         pressure,
         tiltX: Math.round(Math.sin(t * Math.PI) * 25),
         tiltY: Math.round(Math.cos(t * Math.PI) * 15),
@@ -50,6 +52,7 @@ export class DrawingSessionSimulator {
         canvasX: Math.round(clientX),
         canvasY: Math.round(clientY),
         buttons: 1,
+        coalescedEventCount: 1,
         pointerId: 1,
         isPrimary: true,
         timestamp: now + i * 16

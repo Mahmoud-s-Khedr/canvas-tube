@@ -16,13 +16,13 @@ export const InputInspector: React.FC<InputInspectorProps> = ({
   isOpen,
   onClose
 }) => {
-  const [history, setHistory] = useState<CanvasPointerSnapshot[]>([])
+  const [recentPenEvents, setRecentPenEvents] = useState<CanvasPointerSnapshot[]>([])
 
   useEffect(() => {
-    if (snapshot) {
-      setHistory((prev) => [snapshot, ...prev.slice(0, 7)])
+    if (isOpen && snapshot?.pointerType === 'pen') {
+      setRecentPenEvents((previous) => [snapshot, ...previous.slice(0, 15)])
     }
-  }, [snapshot])
+  }, [isOpen, snapshot])
 
   if (!isOpen) return null
 
@@ -118,7 +118,7 @@ export const InputInspector: React.FC<InputInspectorProps> = ({
               fontWeight: 700
             }}
           >
-            {isPen ? 'XP-PEN / STYLUS' : isTouch ? 'TOUCH' : 'MOUSE'}
+            {isPen ? 'PEN / STYLUS' : isTouch ? 'TOUCH' : 'MOUSE'}
           </span>
         </div>
 
@@ -245,14 +245,14 @@ export const InputInspector: React.FC<InputInspectorProps> = ({
           </div>
         )}
 
-        {/* History stream */}
-        {history.length > 0 && (
+        {/* Recent pen event stream */}
+        {recentPenEvents.length > 0 && (
           <div>
             <div style={{ color: '#71717a', fontSize: 11, marginBottom: 4 }}>
               Recent Pointer Trail:
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
-              {history.map((h, i) => (
+              {recentPenEvents.slice(0, 8).map((h, i) => (
                 <div
                   key={i}
                   style={{
@@ -284,6 +284,56 @@ export const InputInspector: React.FC<InputInspectorProps> = ({
             </div>
           </div>
         )}
+
+        {/* Opt-in, one-row-per-browser-event pen diagnostics. */}
+        <div>
+          <div style={{ color: '#71717a', fontSize: 11, marginBottom: 4 }}>Recent pen events:</div>
+          {recentPenEvents.length === 0 ? (
+            <div style={{ color: '#71717a', fontSize: 11 }}>Waiting for pen input…</div>
+          ) : (
+            <div
+              style={{
+                maxHeight: 220,
+                overflow: 'auto',
+                border: '1px solid #27272a',
+                borderRadius: 6,
+                backgroundColor: '#09090b'
+              }}
+            >
+              <table style={{ borderCollapse: 'collapse', fontSize: 10, minWidth: 790, width: '100%' }}>
+                <thead style={{ backgroundColor: '#18181b', color: '#a1a1aa', position: 'sticky', top: 0 }}>
+                  <tr>
+                    {['Type', 'Pointer', 'ID', 'Button', 'Buttons', 'Pressure', 'Tilt X/Y', 'Timestamp', 'Coalesced'].map(
+                      (label) => (
+                        <th
+                          key={label}
+                          style={{ padding: '5px 6px', textAlign: 'left', fontWeight: 600, whiteSpace: 'nowrap' }}
+                        >
+                          {label}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentPenEvents.map((event, index) => (
+                    <tr key={`${event.timestamp}-${event.pointerId}-${index}`} style={{ borderTop: '1px solid #27272a' }}>
+                      <td style={{ padding: '4px 6px' }}>{event.eventType}</td>
+                      <td style={{ padding: '4px 6px' }}>{event.pointerType}</td>
+                      <td style={{ padding: '4px 6px' }}>{event.pointerId}</td>
+                      <td style={{ padding: '4px 6px' }}>{event.button}</td>
+                      <td style={{ padding: '4px 6px' }}>{event.buttons}</td>
+                      <td style={{ padding: '4px 6px' }}>{event.pressure.toFixed(3)}</td>
+                      <td style={{ padding: '4px 6px' }}>{event.tiltX}° / {event.tiltY}°</td>
+                      <td style={{ padding: '4px 6px' }}>{event.timestamp.toFixed(1)}</td>
+                      <td style={{ padding: '4px 6px' }}>{event.coalescedEventCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

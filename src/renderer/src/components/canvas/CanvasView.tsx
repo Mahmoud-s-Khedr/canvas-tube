@@ -145,17 +145,20 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
         setCanvasTool(nextTool)
       }
     }
-    adapter.recordPointerEvent(e)
+    adapter.recordPointerEvent(e, 'pointerdown')
   }
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (blockPalm(e)) return
-    adapter.recordPointerEvent(e)
+    adapter.recordPointerEvent(e, 'pointermove')
   }
 
-  const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerEnd = (
+    e: React.PointerEvent<HTMLDivElement>,
+    eventType: 'pointerup' | 'pointercancel'
+  ) => {
     if (blockPalm(e)) return
-    adapter.recordPointerEvent(e)
+    adapter.recordPointerEvent(e, eventType)
     if (e.pointerType !== 'pen') return
 
     activePenPointers.current.delete(e.pointerId)
@@ -219,8 +222,8 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
       ref={containerRef}
       onPointerDownCapture={handlePointerDown}
       onPointerMoveCapture={handlePointerMove}
-      onPointerUpCapture={handlePointerEnd}
-      onPointerCancelCapture={handlePointerEnd}
+      onPointerUpCapture={(e) => handlePointerEnd(e, 'pointerup')}
+      onPointerCancelCapture={(e) => handlePointerEnd(e, 'pointercancel')}
       onDragOverCapture={handleDragOver}
       onDropCapture={handleDrop}
       style={{

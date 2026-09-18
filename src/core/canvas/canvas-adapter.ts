@@ -51,7 +51,9 @@ export interface CanvasShapeInput {
 }
 
 export interface CanvasPointerSnapshot {
+  eventType: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel'
   pointerType: string
+  button: number
   pressure: number
   tiltX: number
   tiltY: number
@@ -61,6 +63,7 @@ export interface CanvasPointerSnapshot {
   canvasX: number
   canvasY: number
   buttons: number
+  coalescedEventCount: number
   pointerId: number
   isPrimary: boolean
   timestamp: number
