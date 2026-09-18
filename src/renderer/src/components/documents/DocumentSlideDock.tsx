@@ -171,12 +171,10 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
         if (p % 25 === 0) await new Promise((resolve) => setTimeout(resolve, 0))
       }
 
-      const totalWidth =
-        slides.length * SLIDE_WIDTH + Math.max(0, slides.length - 1) * HORIZONTAL_SLIDE_SPACING
-      const totalHeight = slides.reduce((sum, slide) => sum + slide.height, 0) +
-        Math.max(0, slides.length - 1) * VERTICAL_SLIDE_SPACING
-      let currentX = sceneCenter.x - totalWidth / 2
-      let currentY = sceneCenter.y - totalHeight / 2
+      // Anchor the first page at the viewport center. Centering the entire strip
+      // would put a middle page at the current canvas position for long documents.
+      let currentX = sceneCenter.x - SLIDE_WIDTH / 2
+      let currentY = sceneCenter.y - slides[0].height / 2
       const batchId = Date.now()
       let shapes: CanvasShapeInput[] = []
 
