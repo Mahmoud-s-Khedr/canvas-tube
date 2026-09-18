@@ -1,141 +1,103 @@
-# Canvas-Tube PDF Browser-Parity & Feature Gap Analysis Report
+# Canvas-Tube PDF Browser-Parity & Feature Gap Analysis
 
-> **Target System:** Canvas-Tube (Offline Desktop Infinite-Canvas Workspace for Technical Explanations & Recording)  
-> **Evaluation Reference:** Desktop Browser Native PDF Engines (Firefox, Google Chrome, Microsoft Edge, and baseline Chromium/Safari)  
-> **Date:** September 2026
+> **Scope:** repository implementation review<br>
+> **Reviewed:** 18 September 2026<br>
+> **Baseline:** current Canvas-Tube source tree (`pdfjs-dist` 6.3.289)
 
----
+## Executive summary
 
-## Executive Summary
+Canvas-Tube is a local Electron canvas workspace, not yet a full PDF editor or a conventional document viewer. Its current PDF workflow is raster-first:
 
-Standard modern browsers (Firefox, Chrome, Edge) have evolved beyond simple document readers into three distinct specializations:
-1. **Firefox:** Document manipulation & page-level editing (merge, split, reorder, delete, images, reusable signatures).
-2. **Chrome:** Scanned document intelligence (local on-device OCR, text selection on raster scans) & ecosystem storage.
-3. **Edge:** Reading accessibility, AI assistance (Read Aloud, multi-language translation, Copilot summarization/Q&A) & enterprise DRM/digital signatures.
+1. The user imports a local PDF through Electron.
+2. The renderer loads it with the bundled, local PDF.js worker and decoders.
+3. `DocumentSlideDock` shows on-demand thumbnails and places selected or all pages on the Excalidraw canvas as PNG images.
+4. Those placed pages, their metadata, and the source PDF are persisted with the project.
 
-**Canvas-Tube** occupies a unique position: it is not a constrained linear single-page reader, but an **infinite-canvas workspace** designed for visual communication, technical explanation, and recording. While Canvas-Tube already surpasses conventional browsers in multi-page visual layout, freeform inking, arbitrary annotations, and video presentation, it currently relies on `pdfjs-dist` primarily for page rendering to images.
+This makes Canvas-Tube strong at arranging PDF pages spatially, annotating around them with canvas tools, camera tours, and OBS-assisted recording. It does **not** currently preserve a live PDF page model after placement: inserted pages are independent raster image objects. Consequently, page editing, selectable PDF text, AcroForms, native annotations, PDF export, OCR, and assistive document features remain gaps.
 
-To achieve complete coverage of the browser PDF capabilities without compromising Canvas-Tube's offline, privacy-first desktop philosophy, this report details:
-- A full feature parity matrix across all 33+ browser capabilities.
-- Identification of existing native coverage, easily addressable gaps, and vendor-specific edge cases.
-- An actionable, production-ready technical architecture roadmap.
+## Verified current capabilities
 
----
+| Capability | Status | Evidence / behavior |
+|---|---|---|
+| Local PDF import | Implemented | Electron file picker accepts `.pdf`; source bytes are stored as a project asset. |
+| PDF parsing and rendering | Implemented | PDF.js loads base64 document bytes using bundled worker code and local WASM decoder assets. |
+| Page thumbnails | Implemented | The dock renders a 12-page window around the selected page to limit memory use. |
+| Insert one page | Implemented | A selected page is rendered to PNG and placed at the canvas viewport centre. |
+| Insert all pages | Implemented | Pages can be laid out horizontally or vertically, progressively and in batches. |
+| Drag a page to canvas | Implemented | Dock thumbnails expose `application/json` page metadata for the canvas drop handler. |
+| Page placement controls | Implemented | Newly inserted pages can be movable or locked; placed pages from the active document can be unlocked together. |
+| Multiple source PDFs per project | Implemented | The manifest holds a document list and their PDF assets. The UI operates on one active document at a time. |
+| Persistence | Implemented | Project save/open preserves PDF bytes, document entries, canvas PNG assets, and `pdf-slide` provenance metadata. |
+| Canvas annotation and layout | Implemented | Excalidraw tools can add freehand strokes, text, shapes, arrows, and images around or above rasterized pages. |
+| Canvas export | Implemented | The canvas can export PNG or SVG for all, selected, viewport, or custom-area content. This is not PDF export. |
+| Presentation support | Implemented | Camera bookmarks/tours and an OBS WebSocket integration support presentation and recording workflows. |
 
-## Complete Browser PDF Feature Parity Matrix
+## Parity matrix
 
-| # | Feature | Reference Browser | Canvas-Tube Current Status | Parity Strategy & Technical Recommendation | Priority |
-|---|---------|-------------------|----------------------------|--------------------------------------------|----------|
-| **1** | **Merge multiple PDFs** | Firefox | ⚠️ Partial (can import multiple PDFs into dock) | Integrate `pdf-lib` in main/renderer process to concatenate arbitrary PDF binary streams into a single exportable document. | **P1 (High)** |
-| **2** | **Drag-and-drop page reordering** | Firefox | ⚠️ Dock supports canvas drop, not PDF re-indexing | Add thumbnail reorder drag-and-drop in `DocumentSlideDock` to re-sequence pages before saving or canvas layout. | **P1 (High)** |
-| **3** | **Cut + paste PDF pages** | Firefox | ⚠️ Canvas clipboard only | Page-level clipboard in `DocumentSlideDock` to cut/copy/paste pages between document slots. | **P2 (Medium)** |
-| **4** | **Copy / duplicate PDF pages** | Firefox | ⚠️ Canvas duplication only | Add "Duplicate Page" button on dock thumbnail to replicate page in the underlying PDF page tree. | **P1 (High)** |
-| **5** | **Delete PDF pages** | Firefox | ❌ Missing | Add "Delete Page" context action in `DocumentSlideDock`, mutating the active document index via `pdf-lib`. | **P1 (High)** |
-| **6** | **Split PDF / export selected pages** | Firefox | ❌ Missing | Multi-select thumbnails in dock & export selection directly to a new `.pdf` file. | **P1 (High)** |
-| **7** | **Insert arbitrary images into PDF** | Firefox | ✅ **Supported & Superior** | Full image insertion, resizing, repositioning, and locking on top of PDF slides via Excalidraw canvas. | **Existing** |
-| **8** | **Add alt text to PDF images** | Firefox | ⚠️ Partial (customData metadata) | Expose an accessibility / alt-text field on canvas image objects and preserve it during PDF export. | **P3 (Low)** |
-| **9** | **Local AI-generated alt text** | Firefox | ❌ Missing | Optional local multimodal model (e.g. MobileVLM / Transformers.js or local Ollama) to generate slide/image captions. | **P3 (Future)** |
-| **10** | **Saved reusable signatures** | Firefox | ⚠️ Canvas library / stencils | Add a dedicated "Signature Stamp" tool or library preset in Excalidraw for one-click reuse. | **P2 (Medium)** |
-| **11** | **Type a signature** | Firefox | ⚠️ Canvas text tool | Script font generator dialog (`Caveat`, `Dancing Script`) saving vector signature stamp to library. | **P2 (Medium)** |
-| **12** | **Signature from image** | Firefox | ✅ Supported | Image asset importer with transparent background filter. | **Existing** |
-| **13** | **Signature alt text** | Firefox | ⚠️ Custom metadata | Automatically attach "Signature of [Name]" metadata on signature objects. | **P3 (Low)** |
-| **14** | **Comment-management sidebar** | Firefox | ⚠️ Bookmark system exists | Extend existing Bookmark/Scene drawer into an interactive comment & annotation index linked to slides. | **P2 (Medium)** |
-| **15** | **Toggle visibility of all highlights** | Firefox | ⚠️ Canvas layer toggle | Add a quick toggle in the viewport / presenter bar to hide/show ink and highlight strokes (`opacity: 0`). | **P1 (High)** |
-| **16** | **Automatic OCR of scanned PDFs** | Chrome | ❌ Missing | Integrate `tesseract.js` (WebAssembly worker) to extract text layers from raster PDF pages. | **P1 (High)** |
-| **17** | **OCR runs locally on-device** | Chrome | 🌟 **Core Philosophy** | `tesseract.js` runs 100% offline in WebAssembly worker—zero cloud calls, total privacy. | **P1 (High)** |
-| **18** | **Copy text from scanned PDFs** | Chrome | ❌ Missing for raster slides | OCR overlays a transparent text layer (`textLayer` in PDF.js or selectable DOM layer over canvas slide). | **P1 (High)** |
-| **19** | **Save directly to Google Drive** | Chrome | ❌ Out of scope (Local First) | Provide standardized OS export dialogs + Electron drag-out or optional cloud sync plugin. | **P3 (Low)** |
-| **20** | **Download with/without changes** | Chrome | ⚠️ Can export scene or raw PDF | Provide two explicit export targets: "Export Original PDF" vs. "Export Annotated PDF with Canvas Markups". | **P1 (High)** |
-| **21** | **Fill PDFs without form fields** | Chrome | ✅ **Supported & Superior** | Any slide on the infinite canvas can receive arbitrary floating, resizable text, checkboxes, and notes. | **Existing** |
-| **22** | **PDF Read Aloud** | Edge | ❌ Missing | Use native browser `window.speechSynthesis` (Web Speech API) to read PDF text streams with playback/rate controls. | **P1 (High)** |
-| **23** | **Selected-text translation** | Edge | ❌ Missing | Integrated translation modal/popover using offline models (Bergamot / Transformers.js) or user API keys. | **P2 (Medium)** |
-| **24** | **Translation side pane** | Edge | ❌ Missing | Translation tab in the collapsible sidebar displaying source vs. translated text side-by-side. | **P2 (Medium)** |
-| **25** | **70+ translation languages** | Edge | ❌ Missing | Supported through standard translation engines (offline MarianMT/NLLB-200 via ONNX or cloud translation fallback). | **P2 (Medium)** |
-| **26** | **Read translated text aloud** | Edge | ❌ Missing | Pipe translated string directly to `speechSynthesis.speak(utterance)` with target locale voice. | **P2 (Medium)** |
-| **27** | **Copilot PDF summarization** | Edge | ❌ Missing | Add an offline/local LLM or user-configured AI assistant for slide summarization and slide outline generation. | **P2 (Medium)** |
-| **28** | **Ask follow-up questions (Chat PDF)** | Edge | ❌ Missing | RAG / Vector search over extracted PDF page text embeddings + conversational panel. | **P2 (Medium)** |
-| **29** | **Certificate digital signature validation** | Edge | ❌ Missing | Cryptographic validation of PKCS#7 / CMS signatures via Node `node-forge` or `pdf-lib` in main process. | **P3 (Low/Specialized)** |
-| **30** | **Secure-mode signature validation** | Edge | ❌ Missing | Sandboxed Electron utility process for signature certificate verification against system trust store. | **P3 (Low/Specialized)** |
-| **31** | **Microsoft Purview-protected PDFs** | Edge | 🔒 Vendor Locked (Microsoft Cloud DRM) | Requires proprietary Microsoft SDK and active Azure AD / M365 tenant auth. Recommended as out-of-scope for offline tool. | **Out of Scope** |
-| **32** | **IRM-protected PDF support** | Edge | 🔒 Vendor Locked (Enterprise DRM) | Proprietary Microsoft Rights Management encryption. Notify user gracefully if encrypted PDF is encountered. | **Out of Scope** |
-| **33** | **Cross-tenant protected PDFs** | Edge | 🔒 Vendor Locked | Requires Microsoft Cloud enterprise identity broker. Gracefully display decryption error. | **Out of Scope** |
+“Canvas alternative” means the user can approximate an outcome on the canvas; it must not be confused with editing or preserving the original PDF.
 
----
+| Browser-PDF capability | Current status | Notes / next step |
+|---|---|---|
+| View, zoom, and navigate pages | Partial | Pages are rendered by PDF.js and selected from the dock; navigation is page selection plus infinite-canvas pan/zoom, rather than a text-aware continuous document viewer. |
+| Thumbnails | Implemented | On-demand thumbnail rendering is available in `DocumentSlideDock`. |
+| Drag pages into a workspace | Implemented | Pages can be placed singly, by drag-and-drop, or as horizontal/vertical groups. |
+| Reorder pages in the PDF | Missing | Thumbnail order is source-document order; canvas arrangement does not rewrite the PDF page tree. |
+| Merge PDFs | Missing | Multiple PDFs can coexist in a project but cannot be combined into one PDF. |
+| Duplicate, delete, cut, copy, or split PDF pages | Missing | These actions can be approximated for canvas objects, but the source document is unchanged. |
+| Export original PDF | Missing as an explicit command | Original bytes are retained in the project, but there is no dedicated “export original PDF” UX. |
+| Export annotated PDF | Missing | Canvas exports are PNG/SVG only. There is no PDF composition pipeline. |
+| Rotate a PDF page | Canvas alternative only | A placed image object may be transformed on the canvas; source-page rotation and PDF export are absent. |
+| Native PDF annotations/comments | Missing | Canvas marks are not PDF annotations and are not indexed in a comments panel. |
+| Hide/show annotations or highlights | Missing | There is no annotation layer manager or global toggle. |
+| Text selection, copy, find, or outline | Missing | The renderer uses page rasterization; it does not expose PDF.js text layers, search, or document outlines. |
+| Accessible document structure and image alt text | Missing | No PDF structure-tree or page-image accessibility workflow is exposed. |
+| Fill AcroForms | Missing | PDF.js is used for display/rendering only; form interaction and saving are not wired. Canvas text/shapes can visually overlay a form. |
+| OCR for scanned PDFs | Missing | No OCR dependency or extraction worker is present. PDF.js rendering does support local scanned/JBIG2 documents when their decoder assets are available. |
+| Read aloud | Missing | No speech-synthesis integration exists. |
+| Translation, summary, or PDF Q&A | Missing | No translation, LLM, retrieval, or embeddings subsystem exists. |
+| Signature capture or certificate validation | Missing | A signature image can be placed on the canvas, but there is no signature workflow, PDF signing, or CMS/PKCS#7 validation. |
+| Password-protected/encrypted PDFs | Unspecified / untested | PDF.js may request a password at load time, but Canvas-Tube provides no password prompt, validation, or user-facing encrypted-file handling. |
+| Microsoft Purview/IRM-protected PDFs | Out of scope | These require proprietary identity/DRM support and conflict with the local-first baseline. Provide clear detection/error messaging if this becomes a user need. |
 
-## Baseline Features Analysis (Table Stakes)
+## Important implementation boundaries
 
-All mainstream desktop browsers provide baseline reading conveniences. Canvas-Tube compares as follows:
+- `PdfService` renders pages and thumbnails to `<canvas>` and converts them to PNG data URLs. It does not call PDF.js text extraction, form APIs, outline APIs, or save APIs.
+- `DocumentSlideDock` emits `pdf-slide` metadata (`docId`, `pageNumber`) on normal Excalidraw image objects. That metadata supports management of placed assets; it is not a bidirectional page model.
+- `pdf-lib`, `tesseract.js`, speech APIs, translation libraries, and local/remote AI dependencies are not installed.
+- The project manifest can retain several PDFs, while app restore currently selects the first saved document when reopening a project. A document picker/switcher is needed before describing multi-document navigation as complete.
 
-| Baseline Feature | Standard Browser | Canvas-Tube Capabilities | Canvas-Tube Advantage |
-|---|---|---|---|
-| **Viewing Local PDFs** | Tabbed / Single-page scrolling | Infinite Canvas + Slide Dock | Multi-slide spatial layout, juxtaposition, visual timelines |
-| **Zoom & Navigation** | Step zoom, fit-to-width/page | Smooth infinite pan/zoom (10% - 500%), Minimap | Smooth zoom across multiple slides simultaneously |
-| **Rotate Pages** | Document-level 90° increments | Individual object rotation on canvas (any angle: 0°-360°) | Arbitrary free rotation and slant |
-| **Freehand Inking & Highlights** | Basic pen & yellow highlighter | Excalidraw pens, highlighters, arrows, shapes, color palettes | Pressure-sensitive smoothing, roughness styles, eraser, grouping |
-| **Arbitrary Added Text** | Basic text boxes | Markdown, rich text, code blocks with syntax highlighting | Technical explanation tooling (Prism syntax highlighter, math) |
-| **Form Filling** | Interactive AcroForms | Visual text placement anywhere over forms | Works on both scanned flat forms and fillable PDFs |
-| **Presentation / Recording** | Not available (external tool needed) | Built-in webcam overlay, audio capture, canvas video recorder | Instant creation of recorded lectures/walkthroughs directly |
+## Recommended roadmap
 
----
+### P0 — Make current PDF behavior explicit and robust
 
-## Strategic System Enhancement Roadmap
+1. Add an active-document selector for projects with more than one imported PDF.
+2. Add safe password/error handling for load failures, encrypted PDFs, unsupported documents, and missing source assets.
+3. Add targeted tests for thumbnail/page rendering, insertion provenance, all-page layout, and project reopen behavior.
+4. Offer an explicit “Reveal/export original PDF” command, preserving the imported bytes without mutation.
 
-```mermaid
-flowchart TD
-    subgraph Phase1["Phase 1: PDF Manipulation Engine"]
-        A["pdf-lib Integration"] --> B["Page Reorder, Duplicate, Delete"]
-        A --> C["Merge Multiple PDFs"]
-        A --> D["Split & Export Selection"]
-        A --> E["Export Canvas Markups to PDF"]
-    end
+### P1 — True page-level document operations
 
-    subgraph Phase2["Phase 2: Local Intelligence & OCR"]
-        F["Tesseract.js WASM Worker"] --> G["Local Scanned PDF OCR"]
-        G --> H["Text Layer Selection & Search"]
-        I["Web Speech API"] --> J["Read Aloud with Playback Bar"]
-    end
+Adopt a PDF-writing library such as `pdf-lib` behind a document-operation service. Model page order separately from canvas objects, then implement merge, reorder, duplicate, delete, split, and selected-page export. Keep original bytes immutable until the user explicitly saves a derived PDF.
 
-    subgraph Phase3["Phase 3: AI Assistant & Accessibility"]
-        K["Local / Configured LLM API"] --> L["Slide Summarization & Notes"]
-        K --> M["Q&A on PDF Contents"]
-        N["Layer Manager"] --> O["Toggle Annotations / Highlights"]
-    end
-```
+### P2 — Annotated-PDF export
 
-### 1. Document Manipulation Architecture (`pdf-lib`)
-- **Action:** Add `pdf-lib` to dependencies.
-- **Benefits:** Fast, client-side, zero-native-dependency PDF modification.
-- **Capabilities unlocked:**
-  - Merge another PDF directly into the active document.
-  - Reorder, duplicate, delete pages directly inside `DocumentSlideDock`.
-  - Export selected slides as a standalone clean PDF or an annotated PDF containing canvas annotations.
+Create an export pipeline that maps canvas objects to a source document/page only when their `pdf-slide` metadata and geometry allow it. Rasterize or translate eligible annotations onto the correct PDF pages, document fidelity limitations, and provide a flattened output option. This is the prerequisite for calling canvas markup “PDF annotation” in user-facing material.
 
-### 2. Privacy-First Local OCR (`tesseract.js`)
-- **Action:** Spawn a Web Worker running `tesseract.js` using bundled English/multi-language traineddata.
-- **Benefits:** Completely offline, on-device OCR for image-only scans.
-- **Capabilities unlocked:**
-  - Scanned documents automatically produce searchable and selectable text.
-  - User can copy code or text from image slides dropped onto the canvas.
+### P3 — Reading and accessibility
 
-### 3. Voice Read-Aloud & Translation (Web Speech API)
-- **Action:** Utilize native browser `window.speechSynthesis` and `SpeechSynthesisUtterance`.
-- **Benefits:** No external dependencies, zero latency, supports all OS installed voices.
-- **Capabilities unlocked:**
-  - Highlight slide text or press "Read Aloud" in the slide dock to listen to slides.
-  - Add text translation via open translation APIs or offline ONNX models.
+Expose PDF.js text content and outlines for selectable text, copy, find, and keyboard navigation. Add an OCR worker only for pages with no usable text layer; keep language packs and their download/privacy policy explicit. Build alt-text and semantic-tag support as an export concern rather than relying on arbitrary canvas metadata.
 
-### 4. Enterprise DRM Scope Clarification
-- **Microsoft Purview / IRM Protection:** These formats use proprietary Azure Information Protection (AIP) encryption tied to Microsoft 365 cloud credentials. Browser engines like Chromium cannot open them without Microsoft's proprietary binary plugins.
-- **Decision:** As an offline, open, privacy-oriented desktop application, Canvas-Tube should detect encrypted/DRM-locked files and gracefully inform the user with a descriptive dialog rather than bundling heavy proprietary enterprise dependencies.
+### P4 — Optional assistance features
 
----
+Read aloud can use OS voices via `speechSynthesis` once text extraction exists. Translation, summarization, and Q&A should be opt-in and clearly divided between offline models and user-configured network providers. These are enhancements, not prerequisites for core browser-viewer parity.
 
-## Conclusion & Recommendations
+## Acceptance criteria for future parity claims
 
-Canvas-Tube already eclipses traditional browser viewers for **authoring, technical explanations, inking, and video recording**. By adopting:
-1. **`pdf-lib`** for page-level document manipulation (Firefox parity).
-2. **`tesseract.js`** for local, privacy-first OCR (Chrome parity).
-3. **`speechSynthesis`** and an AI assistant drawer for Read Aloud and slide intelligence (Edge parity).
-4. An **"Export Annotated PDF"** pipeline merging Excalidraw vector layers onto original PDF pages.
+Only mark a capability as implemented when it has a user-facing workflow, persistence behavior, error handling, and automated coverage appropriate to its risk. In particular:
 
-Canvas-Tube will encompass the full spectrum of modern browser capabilities while remaining the undisputed premier infinite-canvas document workspace.
+- “PDF editing” requires a saved PDF whose page structure/content changes, not merely a rearranged canvas.
+- “Annotated PDF export” requires marks embedded or flattened into an exported PDF, not PNG/SVG canvas export.
+- “OCR/searchable PDF” requires selectable/searchable text for scanned pages.
+- “Multi-PDF support” requires choosing and operating on each imported document, not just retaining several assets in a project.
+
+Until those criteria are met, Canvas-Tube should be described as a **local PDF-to-infinite-canvas import and presentation workspace**.
