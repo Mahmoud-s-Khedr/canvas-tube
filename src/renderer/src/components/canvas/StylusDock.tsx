@@ -79,14 +79,6 @@ export const StylusDock: React.FC<StylusDockProps> = ({
         </button>
       </div>
 
-      <label className="canvastube-stylus-dock__toggle" title="The pen selects freehand ink on contact">
-        <input
-          type="checkbox"
-          checked={preferences.penDefaultsToDraw}
-          onChange={(event) => onUpdatePreferences({ penDefaultsToDraw: event.target.checked })}
-        />
-        Pen draws by default
-      </label>
       <label className="canvastube-stylus-dock__toggle" title="Ignore touch events while the pen is active">
         <input
           type="checkbox"

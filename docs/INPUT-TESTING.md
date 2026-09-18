@@ -98,8 +98,6 @@ CanvasTube includes a built-in developer **Stylus & Pointer Inspector** specific
 The lower-right **Tablet** dock is the day-to-day control surface (the inspector is for
 diagnostics). Its preferences are stored locally for the next launch:
 
-- **Pen draws by default** switches a pen contact to Excalidraw freehand ink without
-  changing the mouse workflow. Turn it off when you want to use shape tools with the pen.
 - **Palm lock** ignores touch input while a pen contact is active, preventing a resting
   hand from creating marks or moving the canvas.
 - **Barrel button erases** treats either standard barrel switch as a momentary eraser.

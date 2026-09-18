@@ -8,10 +8,10 @@ import {
 } from '../src/core/canvas/stylus-controls'
 
 describe('stylus controls', () => {
-  it('defaults pen contact to freehand ink without changing mouse behavior', () => {
+  it('leaves the current tool unchanged for ordinary pen and mouse contact', () => {
     expect(
       getPenContactTool({ pointerType: 'pen', button: 0, buttons: 1 }, DEFAULT_STYLUS_PREFERENCES)
-    ).toBe('freedraw')
+    ).toBeNull()
     expect(
       getPenContactTool({ pointerType: 'mouse', button: 0, buttons: 1 }, DEFAULT_STYLUS_PREFERENCES)
     ).toBeNull()

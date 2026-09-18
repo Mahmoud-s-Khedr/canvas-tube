@@ -6,8 +6,6 @@ import type { CanvasToolType } from './canvas-adapter'
  * so that tablet drivers can provide their full resolution to Excalidraw.
  */
 export interface StylusPreferences {
-  /** Put the pen straight into freehand ink, while mouse tools stay unchanged. */
-  penDefaultsToDraw: boolean
   /** Ignore fingers while a pen is in range/contact to avoid palm marks. */
   palmRejection: boolean
   /** Treat either pen barrel switch as a momentary eraser. */
@@ -15,7 +13,6 @@ export interface StylusPreferences {
 }
 
 export const DEFAULT_STYLUS_PREFERENCES: StylusPreferences = {
-  penDefaultsToDraw: true,
   palmRejection: true,
   barrelButtonEraser: true
 }
@@ -64,5 +61,5 @@ export function getPenContactTool(
 ): CanvasToolType | null {
   if (pointer.pointerType !== 'pen') return null
   if (shouldUseMomentaryEraser(pointer, preferences.barrelButtonEraser)) return 'eraser'
-  return preferences.penDefaultsToDraw ? 'freedraw' : null
+  return null
 }
