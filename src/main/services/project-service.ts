@@ -12,7 +12,8 @@ import {
 export class ProjectService {
   public static async saveProject(
     projectDir: string,
-    bundle: CanvasProjectBundle
+    bundle: CanvasProjectBundle,
+    assetData: Record<string, string> = {}
   ): Promise<{ success: boolean; path: string; error?: string }> {
     try {
       await fs.mkdir(projectDir, { recursive: true })
@@ -22,11 +23,11 @@ export class ProjectService {
 
       const { projectJson, sceneJson } = serializeProjectBundle(bundle)
 
-      const projectJsonPath = path.join(projectDir, 'project.json')
-      const sceneJsonPath = path.join(projectDir, 'scene.json')
-
-      await fs.writeFile(projectJsonPath, projectJson, 'utf-8')
-      await fs.writeFile(sceneJsonPath, sceneJson, 'utf-8')
+      await this.writeAssetData(projectDir, bundle, assetData)
+      await Promise.all([
+        this.writeFileAtomically(path.join(projectDir, 'project.json'), projectJson),
+        this.writeFileAtomically(path.join(projectDir, 'scene.json'), sceneJson)
+      ])
 
       console.log(`[ProjectService] Successfully saved project to: ${projectDir}`)
       return { success: true, path: projectDir }
@@ -42,7 +43,7 @@ export class ProjectService {
 
   public static async openProject(
     projectDir: string
-  ): Promise<{ bundle: CanvasProjectBundle; projectDir: string }> {
+  ): Promise<{ bundle: CanvasProjectBundle; projectDir: string; assetData: Record<string, string> }> {
     const projectJsonPath = path.join(projectDir, 'project.json')
     const sceneJsonPath = path.join(projectDir, 'scene.json')
 
@@ -62,7 +63,8 @@ export class ProjectService {
     console.log(`[ProjectService] Successfully loaded project from: ${projectDir}`)
     return {
       projectDir,
-      bundle: deserialized.bundle
+      bundle: deserialized.bundle,
+      assetData: await this.readProjectAssetData(projectDir, deserialized.bundle)
     }
   }
 
@@ -130,7 +132,8 @@ export class ProjectService {
 
   public static async readDocumentFile(projectDir: string, relativePath: string): Promise<string | null> {
     try {
-      const fullPath = path.join(projectDir, relativePath)
+      const fullPath = this.resolveProjectPath(projectDir, relativePath)
+      if (!fullPath) return null
       const buffer = await fs.readFile(fullPath)
       return buffer.toString('base64')
     } catch (err) {
@@ -140,9 +143,80 @@ export class ProjectService {
   }
 
   public static async writeDocumentFile(projectDir: string, relativePath: string, buffer: Buffer): Promise<void> {
-    const fullPath = path.join(projectDir, relativePath)
+    const fullPath = this.resolveProjectPath(projectDir, relativePath)
+    if (!fullPath) {
+      throw new Error('Document path must stay inside the project directory')
+    }
     await fs.mkdir(path.dirname(fullPath), { recursive: true })
     await fs.writeFile(fullPath, buffer)
+  }
+
+  private static async writeAssetData(
+    projectDir: string,
+    bundle: CanvasProjectBundle,
+    assetData: Record<string, string>
+  ): Promise<void> {
+    for (const [assetId, asset] of Object.entries(bundle.manifest.assets)) {
+      const encoded = assetData[assetId]
+      if (!encoded) continue
+
+      const targetPath = this.resolveProjectPath(projectDir, asset.relativePath)
+      if (!targetPath) {
+        throw new Error(`Invalid path for asset "${asset.originalFilename}"`)
+      }
+
+      const base64 = encoded.replace(/^data:[^,]*,/, '').replace(/\s/g, '')
+      const buffer = Buffer.from(base64, 'base64')
+      const hash = crypto.createHash('sha256').update(buffer).digest('hex')
+      if (hash !== asset.hash) {
+        throw new Error(`Asset data does not match the recorded checksum for "${asset.originalFilename}"`)
+      }
+
+      await fs.mkdir(path.dirname(targetPath), { recursive: true })
+      await this.writeFileAtomically(targetPath, buffer)
+    }
+  }
+
+  private static async readProjectAssetData(
+    projectDir: string,
+    bundle: CanvasProjectBundle
+  ): Promise<Record<string, string>> {
+    const assetData: Record<string, string> = {}
+
+    await Promise.all(
+      Object.entries(bundle.manifest.assets).map(async ([assetId, asset]) => {
+        const fullPath = this.resolveProjectPath(projectDir, asset.relativePath)
+        if (!fullPath) return
+
+        try {
+          const buffer = await fs.readFile(fullPath)
+          const hash = crypto.createHash('sha256').update(buffer).digest('hex')
+          if (hash === asset.hash) {
+            assetData[assetId] = buffer.toString('base64')
+          } else {
+            console.warn(`[ProjectService] Ignoring checksum-mismatched asset: ${asset.relativePath}`)
+          }
+        } catch {
+          // Older projects may have a manifest entry without an on-disk asset.
+        }
+      })
+    )
+
+    return assetData
+  }
+
+  private static resolveProjectPath(projectDir: string, relativePath: string): string | null {
+    if (!relativePath || path.isAbsolute(relativePath)) return null
+
+    const root = path.resolve(projectDir)
+    const resolved = path.resolve(root, relativePath)
+    return resolved === root || resolved.startsWith(`${root}${path.sep}`) ? resolved : null
+  }
+
+  private static async writeFileAtomically(filePath: string, data: string | Buffer): Promise<void> {
+    const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`
+    await fs.writeFile(temporaryPath, data)
+    await fs.rename(temporaryPath, filePath)
   }
 
   private static getMimeType(ext: string): string {

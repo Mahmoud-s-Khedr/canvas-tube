@@ -94,10 +94,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
   const handleAddIcon = (icon: IconDefinition) => {
     if (!adapter) return
 
-    // Calculate center of current viewport using adapter screenToScene
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const sceneCenter = adapter.screenToScene(viewportWidth / 2, viewportHeight / 2)
+    const sceneCenter = adapter.getViewportCenter()
 
     const dataUrl = IconRegistry.svgToDataUrl(icon.svgContent)
     const fileId = `icon_file_${icon.id}_${Date.now()}`

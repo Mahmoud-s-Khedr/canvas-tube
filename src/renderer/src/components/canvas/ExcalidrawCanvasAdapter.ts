@@ -25,11 +25,13 @@ import {
   convertToExcalidrawElements,
   exportToCanvas,
   exportToSvg,
-  getCommonBounds
+  getCommonBounds,
+  viewportCoordsToSceneCoords
 } from '@excalidraw/excalidraw'
 
 
 function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
+  const metadata = shape.customData ? { customData: shape.customData } : {}
   switch (shape.type) {
     case 'rectangle':
     case 'diamond':
@@ -46,7 +48,8 @@ function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
         fillStyle: 'solid',
         strokeWidth: 2,
         roughness: 1,
-        locked: shape.locked ?? false
+        locked: shape.locked ?? false,
+        ...metadata
       }
     case 'image':
       return {
@@ -57,7 +60,8 @@ function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
         width: shape.width,
         height: shape.height,
         fileId: shape.fileId,
-        locked: shape.locked ?? false
+        locked: shape.locked ?? false,
+        ...metadata
       }
     case 'text':
       return {
@@ -69,7 +73,8 @@ function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
         fontSize: 20,
         fontFamily: 1,
         strokeColor: shape.strokeColor || '#1e1e1e',
-        locked: shape.locked ?? false
+        locked: shape.locked ?? false,
+        ...metadata
       }
     case 'arrow':
       return {
@@ -85,7 +90,8 @@ function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
         ],
         strokeColor: shape.strokeColor || '#1e1e1e',
         strokeWidth: 2,
-        locked: shape.locked ?? false
+        locked: shape.locked ?? false,
+        ...metadata
       }
     default:
       return {
@@ -95,7 +101,8 @@ function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
         y: shape.y,
         width: shape.width,
         height: shape.height,
-        locked: shape.locked ?? false
+        locked: shape.locked ?? false,
+        ...metadata
       }
   }
 }
@@ -156,13 +163,7 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
 
     if (!this.pointerListener) return
 
-    const appState = this.api?.getAppState()
-    const scrollX = appState?.scrollX ?? 0
-    const scrollY = appState?.scrollY ?? 0
-    const zoom = appState?.zoom?.value ?? 1
-
-    const canvasX = (event.clientX - scrollX) / zoom
-    const canvasY = (event.clientY - scrollY) / zoom
+    const point = this.screenToScene(event.clientX, event.clientY)
 
     const snapshot: CanvasPointerSnapshot = {
       pointerType: event.pointerType,
@@ -172,8 +173,8 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
       twist: event.twist,
       clientX: event.clientX,
       clientY: event.clientY,
-      canvasX: Math.round(canvasX),
-      canvasY: Math.round(canvasY),
+      canvasX: Math.round(point.x),
+      canvasY: Math.round(point.y),
       buttons: event.buttons,
       pointerId: event.pointerId,
       isPrimary: event.isPrimary,
@@ -330,25 +331,40 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   }
 
   public screenToScene(clientX: number, clientY: number): Point {
-    const camera = this.getCamera()
-    return {
-      x: (clientX - camera.x) / camera.zoom,
-      y: (clientY - camera.y) / camera.zoom
-    }
+    const state = this.api?.getAppState()
+    if (!state) return { x: clientX, y: clientY }
+
+    return viewportCoordsToSceneCoords(
+      { clientX, clientY },
+      {
+        zoom: state.zoom,
+        offsetLeft: state.offsetLeft,
+        offsetTop: state.offsetTop,
+        scrollX: state.scrollX,
+        scrollY: state.scrollY
+      }
+    )
+  }
+
+  public getViewportCenter(): Point {
+    const state = this.api?.getAppState()
+    if (!state) return { x: 0, y: 0 }
+    return this.screenToScene(state.offsetLeft + state.width / 2, state.offsetTop + state.height / 2)
   }
 
   public zoomTo(bounds: Bounds): void {
     this.stopCameraAnimation()
     if (!this.api) return
     // Adjust camera to center on bounds
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
+    const state = this.api.getAppState()
+    const viewportWidth = state.width
+    const viewportHeight = state.height
     const zoomX = viewportWidth / (bounds.width + 100)
     const zoomY = viewportHeight / (bounds.height + 100)
     const zoom = Math.max(0.2, Math.min(2, Math.min(zoomX, zoomY)))
 
-    const scrollX = -(bounds.x + bounds.width / 2) * zoom + viewportWidth / 2
-    const scrollY = -(bounds.y + bounds.height / 2) * zoom + viewportHeight / 2
+    const scrollX = viewportWidth / (2 * zoom) - (bounds.x + bounds.width / 2)
+    const scrollY = viewportHeight / (2 * zoom) - (bounds.y + bounds.height / 2)
 
     this.setCamera({ x: scrollX, y: scrollY, zoom })
   }
@@ -488,11 +504,12 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     }
 
     if (scope === 'viewport') {
-      const camera = this.getCamera()
-      const width = window.innerWidth / camera.zoom
-      const height = window.innerHeight / camera.zoom
-      const x = -camera.x / camera.zoom
-      const y = -camera.y / camera.zoom
+      const state = this.api?.getAppState()
+      if (!state) return null
+      const width = state.width / state.zoom.value
+      const height = state.height / state.zoom.value
+      const x = -state.scrollX
+      const y = -state.scrollY
       return {
         x: Math.round(x),
         y: Math.round(y),

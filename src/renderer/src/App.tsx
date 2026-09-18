@@ -46,6 +46,7 @@ export const App: React.FC = () => {
     createDefaultManifest('System Design Explanation')
   )
   const [projectDir, setProjectDir] = useState<string | null>(null)
+  const [assetData, setAssetData] = useState<Record<string, string>>({})
   const [isRecordingMode, setIsRecordingMode] = useState(false)
   const [isInspectorOpen, setIsInspectorOpen] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -187,6 +188,7 @@ export const App: React.FC = () => {
     const fresh = createDefaultManifest('New Architecture Canvas')
     setManifest(fresh)
     setProjectDir(null)
+    setAssetData({})
     setActiveDocument(null)
     setActivePdfDoc(null)
     setIsDocumentDockOpen(false)
@@ -203,6 +205,7 @@ export const App: React.FC = () => {
       PdfService.clearCache()
       setProjectDir(result.projectDir)
       setManifest(result.bundle.manifest)
+      setAssetData(result.assetData)
       adapter.deserialize(result.bundle.sceneData)
       setActiveBookmarkIndex(null)
       setCustomExportBounds(null)
@@ -213,7 +216,7 @@ export const App: React.FC = () => {
         const asset = result.bundle.manifest.assets[firstDoc.assetId]
         if (asset && window.desktopApi.readDocumentFile) {
           try {
-            const base64 = await window.desktopApi.readDocumentFile(result.projectDir, asset.relativePath)
+            const base64 = result.assetData[firstDoc.assetId] || await window.desktopApi.readDocumentFile(result.projectDir, asset.relativePath)
             if (base64) {
               const pdfDoc = await PdfService.loadPdfFromBase64(base64, firstDoc.id)
               setActivePdfDoc(pdfDoc)
@@ -241,7 +244,7 @@ export const App: React.FC = () => {
       const saveAsResult = await window.desktopApi.saveProjectAs(manifest.title, {
         manifest,
         sceneData
-      })
+      }, assetData)
       if (saveAsResult?.success && saveAsResult.path) {
         setProjectDir(saveAsResult.path)
         showToast('Project saved successfully!', 'success')
@@ -252,13 +255,13 @@ export const App: React.FC = () => {
     const saveResult = await window.desktopApi.saveProject(projectDir, {
       manifest,
       sceneData
-    })
+    }, assetData)
     if (!saveResult.success) {
       showToast(`Save failed: ${saveResult.error || 'Unknown error'}`, 'warning')
     } else {
       showToast('Project saved successfully!', 'success')
     }
-  }, [adapter, manifest, projectDir, showToast])
+  }, [adapter, assetData, manifest, projectDir, showToast])
 
   const handleSaveProjectAs = useCallback(async () => {
     if (!window.desktopApi?.saveProjectAs) return
@@ -266,12 +269,12 @@ export const App: React.FC = () => {
     const saveAsResult = await window.desktopApi.saveProjectAs(manifest.title, {
       manifest,
       sceneData
-    })
+    }, assetData)
     if (saveAsResult?.success && saveAsResult.path) {
       setProjectDir(saveAsResult.path)
       showToast('Project saved as new file!', 'success')
     }
-  }, [adapter, manifest, showToast])
+  }, [adapter, assetData, manifest, showToast])
 
   // Quick clipboard copy action (Ctrl+Shift+C)
   const handleQuickClipboardCopy = useCallback(async () => {
@@ -535,21 +538,21 @@ export const App: React.FC = () => {
     })
 
     // Place at camera center
-    const camera = adapter.getCamera()
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const sceneCenterX = -camera.x / camera.zoom + viewportWidth / (2 * camera.zoom)
-    const sceneCenterY = -camera.y / camera.zoom + viewportHeight / (2 * camera.zoom)
+    const sceneCenter = adapter.getViewportCenter()
 
     adapter.addObject({
       type: 'image',
-      x: sceneCenterX - 150,
-      y: sceneCenterY - 150,
+      x: sceneCenter.x - 150,
+      y: sceneCenter.y - 150,
       width: 300,
       height: 300,
       fileId
     })
     showToast('Image inserted onto canvas', 'success')
+    setAssetData((previous) => ({
+      ...previous,
+      [asset.id]: dataUrl.split(',')[1] || dataUrl
+    }))
   }, [adapter, showToast])
 
   // PDF import handler
@@ -573,6 +576,7 @@ export const App: React.FC = () => {
           [result.asset.id]: result.asset
         }
       }))
+      setAssetData((previous) => ({ ...previous, [result.asset.id]: result.pdfBase64 }))
 
       setActiveDocument(updatedDoc)
       setActivePdfDoc(pdfDoc)
@@ -646,6 +650,13 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
         e.preventDefault()
         handleQuickClipboardCopy()
+        return
+      }
+
+      // Ctrl+Shift+E: Open production export
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault()
+        setIsExportModalOpen(true)
         return
       }
 
@@ -769,6 +780,8 @@ export const App: React.FC = () => {
     isRecordingMode,
     isCodeModalOpen,
     isBookmarksDrawerOpen,
+    isChaptersModalOpen,
+    isObsModalOpen,
     isExportModalOpen,
     isMarqueeSelecting
   ])
@@ -802,7 +815,6 @@ export const App: React.FC = () => {
         onOpenProject={handleOpenProject}
         onSaveProject={handleSaveProject}
         onSaveProjectAs={handleSaveProjectAs}
-        onImportImage={handleImportImage}
         onOpenExport={() => setIsExportModalOpen(true)}
         onToggleDevTools={handleToggleDevTools}
         onOpenChapters={() => setIsChaptersModalOpen(true)}
@@ -835,6 +847,7 @@ export const App: React.FC = () => {
         isResizingSidebar={isResizingSidebar}
         onDropPdfPage={handleDropPdfPage}
         onImportPdf={handleImportPdf}
+        onImportImage={handleImportImage}
         onOpenCodeSnippetModal={() => setIsCodeModalOpen(true)}
       />
 

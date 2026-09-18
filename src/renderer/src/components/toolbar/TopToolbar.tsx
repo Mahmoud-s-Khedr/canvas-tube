@@ -3,7 +3,6 @@ import {
   FolderOpen,
   Save,
   FilePlus,
-  Image as ImageIcon,
   FileText,
   Activity,
   Video,
@@ -36,7 +35,6 @@ interface TopToolbarProps {
   onOpenProject: () => void
   onSaveProject: () => void
   onSaveProjectAs: () => void
-  onImportImage: () => void
   onOpenExport: () => void
   onToggleDevTools: () => void
   onOpenChapters?: () => void
@@ -65,7 +63,6 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   onOpenProject,
   onSaveProject,
   onSaveProjectAs,
-  onImportImage,
   onOpenExport,
   onToggleDevTools,
   onOpenChapters,
@@ -311,15 +308,6 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         </div>
 
         <div style={{ height: 18, width: 1, backgroundColor: '#3f3f46', margin: '0 4px' }} />
-
-        <button
-          onClick={onImportImage}
-          style={buttonStyle}
-          title="Import Image Asset onto Canvas"
-        >
-          <ImageIcon size={15} color="#38bdf8" />
-          <span>Image</span>
-        </button>
 
         <button
           onClick={onOpenExport}

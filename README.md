@@ -127,6 +127,7 @@ All stencils support **live keyword search** (e.g. searching "kafka" finds Event
 | **`Ctrl + O`** | Open Project Folder |
 | **`Ctrl + N`** | New Project |
 | **`Ctrl + Shift + I`** | Toggle Stylus & Pointer Inspector |
+| **`Ctrl + Shift + E`** | Open Production Export |
 | **`Ctrl + Z`** / **`Ctrl + Y`** | Undo / Redo Canvas Strokes |
 | **`Esc`** | Exit Recording Mode or Close Drawers/Modals |
 

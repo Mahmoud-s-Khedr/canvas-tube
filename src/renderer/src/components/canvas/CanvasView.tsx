@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
-import { FileText, Terminal } from 'lucide-react'
+import { FileText, Image as ImageIcon, Terminal } from 'lucide-react'
 import { ExcalidrawCanvasAdapter } from './ExcalidrawCanvasAdapter'
 import { IconRegistry, IconDefinition } from '@core/icons/icon-registry'
 import '@excalidraw/excalidraw/index.css'
@@ -15,6 +15,7 @@ interface CanvasViewProps {
   isResizingSidebar?: boolean
   onDropPdfPage?: (pageNumber: number, sceneX: number, sceneY: number) => void
   onImportPdf?: () => void
+  onImportImage?: () => void
   onOpenCodeSnippetModal?: () => void
 }
 
@@ -26,6 +27,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   isResizingSidebar = false,
   onDropPdfPage,
   onImportPdf,
+  onImportImage,
   onOpenCodeSnippetModal
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -178,6 +180,15 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
               aria-label="Import PDF / Slides"
             >
               <FileText size={17} color="#ef4444" />
+            </button>
+            <button
+              type="button"
+              className="canvastube-dock-btn"
+              onClick={onImportImage}
+              title="Import Image onto Canvas"
+              aria-label="Import Image"
+            >
+              <ImageIcon size={17} color="#38bdf8" />
             </button>
             <button
               type="button"

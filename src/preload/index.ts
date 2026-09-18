@@ -16,12 +16,20 @@ const desktopApi: DesktopApi = {
     return ipcRenderer.invoke('project:open')
   },
 
-  async saveProject(projectDir: string, bundle: CanvasProjectBundle): Promise<SaveProjectResult> {
-    return ipcRenderer.invoke('project:save', { projectDir, bundle })
+  async saveProject(
+    projectDir: string,
+    bundle: CanvasProjectBundle,
+    assetData: Record<string, string> = {}
+  ): Promise<SaveProjectResult> {
+    return ipcRenderer.invoke('project:save', { projectDir, bundle, assetData })
   },
 
-  async saveProjectAs(defaultTitle: string, bundle: CanvasProjectBundle): Promise<SaveProjectResult | null> {
-    return ipcRenderer.invoke('project:saveAs', { defaultTitle, bundle })
+  async saveProjectAs(
+    defaultTitle: string,
+    bundle: CanvasProjectBundle,
+    assetData: Record<string, string> = {}
+  ): Promise<SaveProjectResult | null> {
+    return ipcRenderer.invoke('project:saveAs', { defaultTitle, bundle, assetData })
   },
 
   async importAsset(): Promise<ImportAssetResult | null> {

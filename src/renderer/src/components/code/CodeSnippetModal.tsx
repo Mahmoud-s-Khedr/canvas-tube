@@ -72,9 +72,7 @@ export const CodeSnippetModal: React.FC<CodeSnippetModalProps> = ({
   const handleInsert = () => {
     if (!adapter) return
 
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const sceneCenter = adapter.screenToScene(viewportWidth / 2, viewportHeight / 2)
+    const sceneCenter = adapter.getViewportCenter()
 
     const fileId = `code_card_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
 

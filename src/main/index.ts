@@ -108,7 +108,10 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle(
     'project:save',
-    async (_event, args: { projectDir: string; bundle: CanvasProjectBundle }) => {
+    async (
+      _event,
+      args: { projectDir: string; bundle: CanvasProjectBundle; assetData?: Record<string, string> }
+    ) => {
       if (!args || typeof args.projectDir !== 'string' || !args.bundle) {
         return { success: false, error: 'Invalid save arguments' }
       }
@@ -118,13 +121,16 @@ function setupIpcHandlers(): void {
         return { success: false, error: `Invalid project manifest: ${validation.error}` }
       }
 
-      return ProjectService.saveProject(args.projectDir, args.bundle)
+      return ProjectService.saveProject(args.projectDir, args.bundle, args.assetData)
     }
   )
 
   ipcMain.handle(
     'project:saveAs',
-    async (_event, args: { defaultTitle: string; bundle: CanvasProjectBundle }) => {
+    async (
+      _event,
+      args: { defaultTitle: string; bundle: CanvasProjectBundle; assetData?: Record<string, string> }
+    ) => {
       if (!mainWindow) return null
       const defaultName = (args?.defaultTitle || 'untitled').replace(/[^a-zA-Z0-9_-]/g, '_')
       const result = await dialog.showSaveDialog(mainWindow, {
@@ -142,7 +148,7 @@ function setupIpcHandlers(): void {
         return { success: false, error: `Invalid project manifest: ${validation.error}` }
       }
 
-      return ProjectService.saveProject(result.filePath, args.bundle)
+      return ProjectService.saveProject(result.filePath, args.bundle, args.assetData)
     }
   )
 

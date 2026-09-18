@@ -9,6 +9,8 @@ export interface SaveProjectResult {
 export interface OpenProjectResult {
   projectDir: string
   bundle: CanvasProjectBundle
+  /** Base64-encoded source bytes for project assets, keyed by manifest asset id. */
+  assetData: Record<string, string>
 }
 
 export interface ImportAssetResult {
@@ -47,8 +49,16 @@ export interface SystemInfo {
 
 export interface DesktopApi {
   openProject(): Promise<OpenProjectResult | null>
-  saveProject(projectDir: string, bundle: CanvasProjectBundle): Promise<SaveProjectResult>
-  saveProjectAs(defaultTitle: string, bundle: CanvasProjectBundle): Promise<SaveProjectResult | null>
+  saveProject(
+    projectDir: string,
+    bundle: CanvasProjectBundle,
+    assetData?: Record<string, string>
+  ): Promise<SaveProjectResult>
+  saveProjectAs(
+    defaultTitle: string,
+    bundle: CanvasProjectBundle,
+    assetData?: Record<string, string>
+  ): Promise<SaveProjectResult | null>
   importAsset(): Promise<ImportAssetResult | null>
   importPdf(): Promise<ImportPdfResult | null>
   readDocumentFile(projectDir: string, relativePath: string): Promise<string | null>

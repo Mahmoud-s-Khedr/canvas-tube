@@ -113,11 +113,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
 
   const handleInsertCurrentPage = async () => {
     if (!adapter) return
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-
-    // Center in scene coordinates
-    const sceneCenter = adapter.screenToScene(viewportWidth / 2, viewportHeight / 2)
+    const sceneCenter = adapter.getViewportCenter()
     await insertPageAtCoordinates(selectedPage, sceneCenter.x, sceneCenter.y)
   }
 
@@ -126,9 +122,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
     setIsInserting(true)
 
     try {
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
-      const sceneCenter = adapter.screenToScene(viewportWidth / 2, viewportHeight / 2)
+      const sceneCenter = adapter.getViewportCenter()
 
       const slideWidth = 800
       const spacing = 80
@@ -173,9 +167,7 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
     setIsInserting(true)
 
     try {
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
-      const sceneCenter = adapter.screenToScene(viewportWidth / 2, viewportHeight / 2)
+      const sceneCenter = adapter.getViewportCenter()
 
       const slideWidth = 800
       const spacing = 100

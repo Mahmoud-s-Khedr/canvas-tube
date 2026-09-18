@@ -30,5 +30,8 @@
     "src/renderer/src/**/*",
     "src/core/**/*",
     "tests/**/*"
+  ],
+  "exclude": [
+    "tests/project-service.test.ts"
   ]
 }
