@@ -195,6 +195,7 @@ describe('Icon Registry & Search', () => {
 
     const redisResults = registry.search('redis cache', 'generic')
     expect(redisResults.some((i) => i.id === 'gen-redis')).toBe(true)
+    expect(registry.get('gen-redis')?.svgContent).toContain('fill="#FF4438"')
 
     const databaseResults = registry.search('', 'generic', 'database')
     expect(databaseResults.every((i) => i.category === 'database')).toBe(true)

@@ -9,6 +9,7 @@ const targetDir = path.join(rootDir, 'assets/icons')
 const k8sCloneDir = '/tmp/canvastube-k8s-icons/community'
 const k8sBase = path.join(k8sCloneDir, 'icons/svg')
 const simpleIconsDir = path.join(rootDir, 'node_modules/simple-icons/icons')
+const simpleIconsDataPath = path.join(rootDir, 'node_modules/simple-icons/data/simple-icons.json')
 
 // These vendor-neutral technology stencils are copied from the pinned
 // simple-icons dev dependency. Metadata lives in icon-metadata.ts, which this
@@ -65,15 +66,23 @@ function ensureK8sRepo() {
 }
 
 function syncTechnologyLogos() {
-  if (!fs.existsSync(simpleIconsDir)) {
+  if (!fs.existsSync(simpleIconsDir) || !fs.existsSync(simpleIconsDataPath)) {
     throw new Error('simple-icons is not installed. Run npm install before syncing technology logos.')
   }
+  const iconColors = new Map(
+    JSON.parse(fs.readFileSync(simpleIconsDataPath, 'utf8')).map((icon) => [icon.slug, icon.hex])
+  )
   const genericDir = path.join(targetDir, 'generic')
   fs.mkdirSync(genericDir, { recursive: true })
   for (const [filename, source] of TECHNOLOGY_LOGOS) {
-    fs.copyFileSync(path.join(simpleIconsDir, `${source}.svg`), path.join(genericDir, `${filename}.svg`))
+    const color = iconColors.get(source)
+    if (!color) throw new Error(`No brand color found for Simple Icon: ${source}`)
+    const svg = fs.readFileSync(path.join(simpleIconsDir, `${source}.svg`), 'utf8')
+      .replace(/<svg\b([^>]*)>/i, `<svg$1 fill="#${color}">`)
+      .replace(/(<title>.*?<\/title>)/i, '$1<rect width="24" height="24" rx="2" fill="#ffffff"/>')
+    fs.writeFileSync(path.join(genericDir, `${filename}.svg`), `${svg}\n`)
   }
-  console.log(`Synced ${TECHNOLOGY_LOGOS.length} generic technology logos.`)
+  console.log(`Synced ${TECHNOLOGY_LOGOS.length} colored generic technology logos.`)
 }
 
 function syncKubernetesIcons() {

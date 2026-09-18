@@ -19,7 +19,7 @@ assets/icons/
 - **Google Cloud**: [Google Cloud Icons](https://cloud.google.com/icons) (CC-BY-4.0).
 - **Azure**: [Azure Public Service Icons](https://learn.microsoft.com/en-us/azure/architecture/icons/) (official V24 release).
 - **Kubernetes**: [kubernetes/community](https://github.com/kubernetes/community/tree/master/icons) (Apache-2.0 / CC-BY-4.0).
-- **Technology logos**: [Simple Icons](https://simpleicons.org/) package v16 (CC0-1.0). Individual trademarks remain the property of their owners.
+- **Technology logos**: [Simple Icons](https://simpleicons.org/) package v16 (CC0-1.0), rendered using each logo's supplied brand color on a neutral tile. Individual trademarks remain the property of their owners.
 
 ## Automated Sync Pipeline
 
