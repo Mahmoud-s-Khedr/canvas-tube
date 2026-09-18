@@ -115,6 +115,10 @@ describe('PdfService Base64 Loading and In-Memory Worker', () => {
     expect(map.getOrInsertComputed('page', () => 2)).toBe(1)
   })
 
+  it('installs the PDF.js Math.sumPrecise compatibility helper', () => {
+    expect(Math.sumPrecise([0.1, 0.2, 0.3])).toBeCloseTo(0.6)
+  })
+
   it('loads valid base64 PDF and retrieves document properties', async () => {
     const doc = await PdfService.loadPdfFromBase64(MINIMAL_PDF_BASE64, 'test-doc-1')
     expect(doc).toBeDefined()

@@ -57,6 +57,12 @@ body,
   display: none !important;
 }
 
+/* CanvasTube keeps the canvas uncluttered; navigation remains available via the hand tool,
+   middle-mouse drag, and Space+drag. */
+.excalidraw .HintViewer {
+  display: none;
+}
+
 /* Custom Canvas Dock Buttons */
 .canvastube-dock-btn {
   display: flex;

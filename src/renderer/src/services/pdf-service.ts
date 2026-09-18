@@ -22,15 +22,16 @@ if (typeof (Uint8Array.prototype as unknown as Record<string, unknown>).toHex !=
 }
 
 // In modern Electron packaged apps running on file:// protocol, external Web Workers
-// fail to load because origin is "null" and absolute paths resolve to file:///<root>.
-// Supplying pdfjsWorker directly to globalThis ensures self-contained,
-// zero-dependency in-memory PDF parsing across development, production, and tests.
+// can fail to load because origin is "null" and absolute paths resolve to file:///<root>.
+// Supplying the bundled worker directly keeps PDF parsing self-contained in development,
+// production, and tests. PDF.js calls this its "fake worker" even though the worker
+// message handler is bundled locally; suppress its misleading fallback warning below.
 if (typeof window !== 'undefined') {
   ;(window as unknown as Record<string, unknown>).pdfjsWorker = pdfjsWorker
 }
 ;(globalThis as unknown as Record<string, unknown>).pdfjsWorker = pdfjsWorker
 
-// Clear workerSrc to ensure PDF.js relies on the embedded mainThreadWorkerMessageHandler
+// Clear workerSrc to ensure PDF.js relies on the embedded mainThreadWorkerMessageHandler.
 pdfjsLib.GlobalWorkerOptions.workerSrc = ''
 
 export interface RenderedPage {
@@ -63,8 +64,21 @@ export class PdfService {
       bytes[i] = binaryString.charCodeAt(i)
     }
 
+    const wasmUrl =
+      typeof window !== 'undefined' ? new URL('./wasm/', window.location.href).toString() : undefined
+
     const loadingTask = pdfjsLib.getDocument({
-      data: bytes
+      data: bytes,
+      // Supply the locally bundled WASM decoders. Scanned PDFs commonly use
+      // JBIG2 compression, which cannot render without jbig2.wasm.
+      ...(wasmUrl ? { wasmUrl } : {}),
+      // file:// URLs in packaged Electron apps are loaded reliably through
+      // PDF.js' main-thread binary loader rather than worker fetch.
+      useWorkerFetch: false,
+      // The bundled in-memory worker is intentional in Electron. Without this PDF.js
+      // logs a scary-looking (but non-fatal) "Setting up fake worker" warning for every
+      // imported document.
+      verbosity: pdfjsLib.VerbosityLevel.ERRORS
     })
 
     const pdfDoc = await loadingTask.promise

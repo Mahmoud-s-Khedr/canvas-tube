@@ -143,7 +143,9 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
             saveAsImage: false
           },
           tools: {
-            image: false
+            // PDF pages and the custom image-import button both create Excalidraw image
+            // elements. Disabling this tool also disables those programmatic inserts.
+            image: true
           }
         }}
       />
