@@ -28,6 +28,7 @@ import {
   getCommonBounds,
   viewportCoordsToSceneCoords
 } from '@excalidraw/excalidraw'
+import { IconRegistry } from '@core/icons/icon-registry'
 
 
 function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
@@ -60,6 +61,11 @@ function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
         width: shape.width,
         height: shape.height,
         fileId: shape.fileId,
+        // Programmatic image insertions already have a complete data URL in
+        // Excalidraw's file store. Avoid the transient "pending" state, which
+        // is intended for an interactive upload and can reapply intrinsic
+        // image dimensions after a resize.
+        status: 'saved',
         locked: shape.locked ?? false,
         ...metadata
       }
@@ -447,9 +453,26 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     const data = scene as any
     if (!data) return
 
-    const elements = Array.isArray(data.elements) ? data.elements : []
+    const elements = Array.isArray(data.elements)
+      ? data.elements.map((element: any) => {
+          // Icon files are ready immediately. Upgrade scenes made before
+          // programmatic images were marked saved so an old pending state
+          // cannot restore a stale intrinsic size after a resize.
+          if (element?.type === 'image' && element.customData?.iconId && element.status !== 'saved') {
+            return { ...element, status: 'saved' }
+          }
+          return element
+        })
+      : []
     const appState = data.appState || {}
-    const files = data.files || {}
+    const files = Object.fromEntries(
+      Object.entries(data.files || {}).map(([id, file]: [string, any]) => {
+        if (id.startsWith('builtin-icon-') && file?.mimeType === 'image/svg+xml') {
+          return [id, { ...file, dataURL: IconRegistry.normalizeSvgDataUrl(file.dataURL) }]
+        }
+        return [id, file]
+      })
+    )
 
     if (Object.keys(files).length > 0) {
       this.api.addFiles(Object.values(files))

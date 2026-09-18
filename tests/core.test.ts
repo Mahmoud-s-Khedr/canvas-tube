@@ -211,6 +211,24 @@ describe('Icon Registry & Search', () => {
     )
   })
 
+  it('gives viewBox-only SVGs stable intrinsic dimensions for canvas resizing', () => {
+    const svg = '<svg viewBox="0 0 512 512"><path d="M0 0h512v512H0z"/></svg>'
+    const dataUrl = IconRegistry.svgToDataUrl(svg)
+    const normalizedSvg = decodeURIComponent(dataUrl.split(',')[1])
+
+    expect(normalizedSvg).toContain('width="512"')
+    expect(normalizedSvg).toContain('height="512"')
+    expect(IconRegistry.getDisplaySize(svg)).toEqual({ width: 64, height: 64 })
+  })
+
+  it('normalizes legacy SVG data URLs while leaving unrelated data URLs intact', () => {
+    const legacySvg = 'data:image/svg+xml;charset=utf-8,%3Csvg%20viewBox%3D%220%200%20512%20512%22%3E%3C%2Fsvg%3E'
+    const normalizedSvg = decodeURIComponent(IconRegistry.normalizeSvgDataUrl(legacySvg).split(',')[1])
+
+    expect(normalizedSvg).toContain('width="512"')
+    expect(IconRegistry.normalizeSvgDataUrl('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA')
+  })
+
   it('reuses a bundled SVG file ID for every placement', () => {
     const icon = INITIAL_ICON_DEFINITIONS.find((item) => item.id === 'gen-redis')!
     const files: unknown[] = []

@@ -80,10 +80,33 @@ export class IconRegistry {
     if (!isSafeIconSvg(svgString)) {
       throw new Error('Refusing unsafe SVG content')
     }
-    const encoded = encodeURIComponent(svgString)
+    // An SVG with only a viewBox has no intrinsic viewport size. Browsers then
+    // report a 300x150 natural image size, which makes Excalidraw use the
+    // wrong source rectangle while resizing the image. Give every bundled
+    // icon an explicit viewport derived from its viewBox before it becomes an
+    // Excalidraw file.
+    const normalizedSvg = IconRegistry.ensureIntrinsicDimensions(svgString)
+    const encoded = encodeURIComponent(normalizedSvg)
       .replace(/'/g, '%27')
       .replace(/"/g, '%22')
     return `data:image/svg+xml;charset=utf-8,${encoded}`
+  }
+
+  /** Normalizes a previously stored SVG data URL without touching other file types. */
+  public static normalizeSvgDataUrl(dataUrl: string): string {
+    const commaIndex = dataUrl.indexOf(',')
+    const header = dataUrl.slice(0, commaIndex).toLowerCase()
+    if (commaIndex === -1 || !header.startsWith('data:image/svg+xml') || header.includes(';base64')) {
+      return dataUrl
+    }
+
+    try {
+      return IconRegistry.svgToDataUrl(decodeURIComponent(dataUrl.slice(commaIndex + 1)))
+    } catch {
+      // Existing projects may contain a malformed or legacy SVG. Preserve it
+      // rather than making a project impossible to open.
+      return dataUrl
+    }
   }
 
   public static getFileId(iconId: string): string {
@@ -91,13 +114,41 @@ export class IconRegistry {
   }
 
   public static getDisplaySize(svgContent: string, maxSize = 64): { width: number; height: number } {
-    const viewBox = svgContent.match(/\bviewBox\s*=\s*["']\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*["']/i)
-    const width = Number(viewBox?.[3])
-    const height = Number(viewBox?.[4])
+    const viewBox = IconRegistry.getViewBox(svgContent)
+    const width = viewBox?.width ?? Number.NaN
+    const height = viewBox?.height ?? Number.NaN
     if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
       return { width: maxSize, height: maxSize }
     }
     const scale = maxSize / Math.max(width, height)
     return { width: Math.round(width * scale), height: Math.round(height * scale) }
+  }
+
+  private static ensureIntrinsicDimensions(svgString: string): string {
+    const rootTag = svgString.match(/^\s*<svg\b[^>]*>/i)?.[0]
+    const viewBox = IconRegistry.getViewBox(svgString)
+    if (!rootTag || !viewBox) return svgString
+
+    const hasWidth = /\bwidth\s*=/i.test(rootTag)
+    const hasHeight = /\bheight\s*=/i.test(rootTag)
+    if (hasWidth && hasHeight) return svgString
+
+    const dimensions = [
+      hasWidth ? '' : ` width="${viewBox.width}"`,
+      hasHeight ? '' : ` height="${viewBox.height}"`
+    ].join('')
+
+    return svgString.replace(rootTag, `${rootTag.slice(0, -1)}${dimensions}>`)
+  }
+
+  private static getViewBox(svgContent: string): { width: number; height: number } | null {
+    const viewBox = svgContent.match(
+      /\bviewBox\s*=\s*["']\s*[-+\d.]+[\s,]+[-+\d.]+[\s,]+([-+\d.]+)[\s,]+([-+\d.]+)\s*["']/i
+    )
+    const width = Number(viewBox?.[1])
+    const height = Number(viewBox?.[2])
+    return Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0
+      ? { width, height }
+      : null
   }
 }
