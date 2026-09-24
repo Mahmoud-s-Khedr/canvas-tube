@@ -4,6 +4,7 @@ import { Excalidraw } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import { FileText, Image as ImageIcon, Terminal } from 'lucide-react'
 import { ExcalidrawCanvasAdapter } from './ExcalidrawCanvasAdapter'
+import { QuickConnectOverlay } from './QuickConnectOverlay'
 import { IconRegistry, INITIAL_ICON_DEFINITIONS } from '@core/icons/icon-registry'
 import { placeIcon } from '@core/icons/icon-placement'
 import {
@@ -56,11 +57,16 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   onRegisterToolSetter,
   shortcutLabel
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [canvasContainer, setCanvasContainer] = useState<HTMLDivElement | null>(null)
   const [toolbarEl, setToolbarEl] = useState<HTMLElement | null>(null)
   const activePenPointers = useRef(new Set<number>())
   const temporaryEraserTools = useRef(new Map<number, CanvasToolType>())
   const [stylusPreferences] = useState<StylusPreferences>(loadStylusPreferences)
+  const setContainerRef = useCallback((node: HTMLDivElement | null) => {
+    containerRef.current = node
+    setCanvasContainer(node)
+  }, [])
 
   // Find the Excalidraw toolbar stack container and attach custom dock actions
   useEffect(() => {
@@ -133,6 +139,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   )
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as Element).closest?.('[data-quick-connect="true"]')) return
     if (blockPalm(e)) return
 
     if (e.pointerType === 'pen') {
@@ -149,6 +156,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   }
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as Element).closest?.('[data-quick-connect="true"]')) return
     if (blockPalm(e)) return
     adapter.recordPointerEvent(e, 'pointermove')
   }
@@ -157,6 +165,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
     e: React.PointerEvent<HTMLDivElement>,
     eventType: 'pointerup' | 'pointercancel'
   ) => {
+    if ((e.target as Element).closest?.('[data-quick-connect="true"]')) return
     if (blockPalm(e)) return
     adapter.recordPointerEvent(e, eventType)
     if (e.pointerType !== 'pen') return
@@ -219,7 +228,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainerRef}
       onPointerDownCapture={handlePointerDown}
       onPointerMoveCapture={handlePointerMove}
       onPointerUpCapture={(e) => handlePointerEnd(e, 'pointerup')}
@@ -261,6 +270,8 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           }
         }}
       />
+
+      <QuickConnectOverlay adapter={adapter} container={canvasContainer} />
 
       {/* Portaled Dock Extensions: PDF / Slides & Code Card */}
       {toolbarEl &&

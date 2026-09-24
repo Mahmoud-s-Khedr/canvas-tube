@@ -33,6 +33,16 @@ import {
   createCanvasPointerSnapshot,
   type CanvasPointerEventType
 } from '@core/canvas/pointer-diagnostics'
+import {
+  QUICK_CONNECT_METADATA_KEY,
+  anchorFixedPoint,
+  anchorScenePoint,
+  connectorMetadata,
+  orthogonalPreviewPoints,
+  type CanvasTubeConnectorMetadata,
+  type ConnectableElement,
+  type ConnectionAnchor
+} from '@core/canvas/connectors'
 
 
 function createShapeSkeleton(shape: CanvasShapeInput, id: string): any {
@@ -126,6 +136,8 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
   private pendingScene: unknown = null
   private animationCancelFn?: () => void
   private keyboardTarget: HTMLElement | null = null
+  private sceneSubscribers = new Set<() => void>()
+  private reconcilingConnectors = false
 
   public setApi(api: ExcalidrawImperativeAPI | null): void {
     if (this.unsubscribeOnChange) {
@@ -137,6 +149,8 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
 
     if (api) {
       this.unsubscribeOnChange = api.onChange((elements: readonly ExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
+        this.reconcileQuickConnectors(elements)
+        this.sceneSubscribers.forEach((listener) => listener())
         if (this.changeListener) {
           this.changeListener({
             elements,
@@ -172,6 +186,188 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
 
   public setChangeListener(listener?: (sceneData: unknown) => void): void {
     this.changeListener = listener
+  }
+
+  /** Subscribe to scene, selection, or camera changes without owning onChange. */
+  public subscribeToScene(listener: () => void): () => void {
+    this.sceneSubscribers.add(listener)
+    return () => this.sceneSubscribers.delete(listener)
+  }
+
+  public getCurrentElements(): readonly ExcalidrawElement[] {
+    return this.api?.getSceneElements().filter((element) => !element.isDeleted) || []
+  }
+
+  public sceneToScreen(point: Point): Point {
+    const state = this.api?.getAppState()
+    if (!state) return point
+    return {
+      x: state.offsetLeft + (point.x + state.scrollX) * state.zoom.value,
+      y: state.offsetTop + (point.y + state.scrollY) * state.zoom.value
+    }
+  }
+
+  public getQuickConnectorMetadata(element: unknown): CanvasTubeConnectorMetadata | null {
+    const customData = (element as { customData?: Record<string, unknown> } | null)?.customData
+    return connectorMetadata(customData?.[QUICK_CONNECT_METADATA_KEY])
+  }
+
+  /** Creates an Excalidraw elbow arrow and both native bindings in one scene update. */
+  public createQuickConnector(
+    sourceElementId: string,
+    sourceAnchor: ConnectionAnchor,
+    targetElementId: string,
+    targetAnchor: ConnectionAnchor
+  ): ObjectId | null {
+    if (!this.api || sourceElementId === targetElementId) return null
+    const current = this.api.getSceneElementsIncludingDeleted() as readonly any[]
+    const source = current.find((element) => element.id === sourceElementId && !element.isDeleted)
+    const target = current.find((element) => element.id === targetElementId && !element.isDeleted)
+    if (!source || !target) return null
+
+    const id = `connector_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    const metadata: CanvasTubeConnectorMetadata = {
+      sourceElementId,
+      sourceAnchor,
+      targetElementId,
+      targetAnchor,
+      routingType: 'orthogonal'
+    }
+    const arrow = this.createElbowArrow(id, source, sourceAnchor, target, targetAnchor, metadata)
+    const elements = current.map((element) => {
+      if (element.id === sourceElementId || element.id === targetElementId) {
+        return this.withBoundArrow(element, id)
+      }
+      return element
+    })
+    this.api.updateScene({ elements: [...elements, arrow] })
+    return id
+  }
+
+  /** Rebinds one endpoint while retaining the other endpoint and arrow identity. */
+  public reconnectQuickConnector(
+    connectorId: string,
+    endpoint: 'source' | 'target',
+    elementId: string,
+    anchor: ConnectionAnchor
+  ): boolean {
+    if (!this.api) return false
+    const current = this.api.getSceneElementsIncludingDeleted() as readonly any[]
+    const connector = current.find((element) => element.id === connectorId && !element.isDeleted)
+    const metadata = this.getQuickConnectorMetadata(connector)
+    const nextElement = current.find((element) => element.id === elementId && !element.isDeleted)
+    if (!connector || !metadata || !nextElement) return false
+
+    const nextMetadata: CanvasTubeConnectorMetadata =
+      endpoint === 'source'
+        ? { ...metadata, sourceElementId: elementId, sourceAnchor: anchor }
+        : { ...metadata, targetElementId: elementId, targetAnchor: anchor }
+    if (nextMetadata.sourceElementId === nextMetadata.targetElementId) return false
+
+    const source = current.find((element) => element.id === nextMetadata.sourceElementId && !element.isDeleted)
+    const target = current.find((element) => element.id === nextMetadata.targetElementId && !element.isDeleted)
+    if (!source || !target) return false
+
+    const routed = this.createElbowArrow(connectorId, source, nextMetadata.sourceAnchor, target, nextMetadata.targetAnchor, nextMetadata, connector)
+    const oldEndpointId = endpoint === 'source' ? metadata.sourceElementId : metadata.targetElementId
+    const elements = current.map((element) => {
+      if (element.id === connectorId) return routed
+      if (element.id === oldEndpointId && oldEndpointId !== elementId) return this.withoutBoundArrow(element, connectorId)
+      if (element.id === elementId) return this.withBoundArrow(element, connectorId)
+      return element
+    })
+    this.api.updateScene({ elements })
+    return true
+  }
+
+  private createElbowArrow(
+    id: string,
+    source: ConnectableElement & Record<string, any>,
+    sourceAnchor: ConnectionAnchor,
+    target: ConnectableElement & Record<string, any>,
+    targetAnchor: ConnectionAnchor,
+    metadata: CanvasTubeConnectorMetadata,
+    existing?: Record<string, any>
+  ): any {
+    const sourcePoint = anchorScenePoint(source, sourceAnchor)
+    const targetPoint = anchorScenePoint(target, targetAnchor)
+    const route = orthogonalPreviewPoints(sourcePoint, sourceAnchor, targetPoint, targetAnchor, 24)
+    const points = route.map((point) => [point.x - sourcePoint.x, point.y - sourcePoint.y])
+    const skeleton = {
+      id,
+      type: 'arrow' as const,
+      x: sourcePoint.x,
+      y: sourcePoint.y,
+      width: Math.max(1, Math.abs(targetPoint.x - sourcePoint.x)),
+      height: Math.max(1, Math.abs(targetPoint.y - sourcePoint.y)),
+      points,
+      elbowed: true,
+      fixedSegments: [],
+      startIsSpecial: false,
+      endIsSpecial: false,
+      startBinding: { elementId: source.id, focus: 0, gap: 0, fixedPoint: anchorFixedPoint(sourceAnchor) },
+      endBinding: { elementId: target.id, focus: 0, gap: 0, fixedPoint: anchorFixedPoint(targetAnchor) },
+      startArrowhead: null,
+      endArrowhead: 'arrow',
+      strokeColor: existing?.strokeColor || '#4da3ff',
+      strokeWidth: existing?.strokeWidth || 2,
+      strokeStyle: existing?.strokeStyle || 'solid',
+      roughness: existing?.roughness ?? 1,
+      locked: existing?.locked ?? false,
+      customData: {
+        ...(existing?.customData || {}),
+        [QUICK_CONNECT_METADATA_KEY]: metadata
+      }
+    }
+    // The public skeleton converter intentionally initializes bindings to
+    // null (interactive tools add them afterwards). Quick Connect commits a
+    // complete arrow in one update, so restore the fixed-point bindings after
+    // conversion rather than relying on private Excalidraw internals.
+    const converted = convertToExcalidrawElements([skeleton as any], { regenerateIds: false })[0] as any
+    return {
+      ...converted,
+      elbowed: true,
+      fixedSegments: [],
+      startIsSpecial: false,
+      endIsSpecial: false,
+      startBinding: skeleton.startBinding,
+      endBinding: skeleton.endBinding,
+      startArrowhead: null,
+      endArrowhead: 'arrow',
+      customData: skeleton.customData
+    }
+  }
+
+  private withBoundArrow(element: Record<string, any>, arrowId: string): Record<string, any> {
+    const boundElements = Array.isArray(element.boundElements) ? element.boundElements : []
+    return boundElements.some((bound: { id: string }) => bound.id === arrowId)
+      ? element
+      : { ...element, boundElements: [...boundElements, { id: arrowId, type: 'arrow' }] }
+  }
+
+  private withoutBoundArrow(element: Record<string, any>, arrowId: string): Record<string, any> {
+    const boundElements = Array.isArray(element.boundElements) ? element.boundElements : []
+    return { ...element, boundElements: boundElements.filter((bound: { id: string }) => bound.id !== arrowId) }
+  }
+
+  private reconcileQuickConnectors(elements: readonly ExcalidrawElement[]): void {
+    if (!this.api || this.reconcilingConnectors) return
+    const existingIds = new Set(elements.filter((element) => !element.isDeleted).map((element) => element.id))
+    const stale = elements.filter((element) => {
+      const metadata = this.getQuickConnectorMetadata(element)
+      return metadata && !element.isDeleted && (!existingIds.has(metadata.sourceElementId) || !existingIds.has(metadata.targetElementId))
+    })
+    if (stale.length === 0) return
+
+    this.reconcilingConnectors = true
+    try {
+      const staleIds = new Set(stale.map((element) => element.id))
+      this.api.updateScene({
+        elements: elements.map((element: any) => (staleIds.has(element.id) ? { ...element, isDeleted: true } : element))
+      })
+    } finally {
+      this.reconcilingConnectors = false
+    }
   }
 
   public recordPointerEvent(
