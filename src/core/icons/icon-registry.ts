@@ -86,10 +86,13 @@ export class IconRegistry {
     // icon an explicit viewport derived from its viewBox before it becomes an
     // Excalidraw file.
     const normalizedSvg = IconRegistry.ensureIntrinsicDimensions(svgString)
-    const encoded = encodeURIComponent(normalizedSvg)
-      .replace(/'/g, '%27')
-      .replace(/"/g, '%22')
-    return `data:image/svg+xml;charset=utf-8,${encoded}`
+    // Excalidraw normalizes SVG files by Base64-decoding the data after the
+    // comma. A percent-encoded data URL renders in a browser but makes that
+    // normalization throw InvalidCharacterError when an icon is dropped.
+    const bytes = new TextEncoder().encode(normalizedSvg)
+    let binary = ''
+    for (const byte of bytes) binary += String.fromCharCode(byte)
+    return `data:image/svg+xml;base64,${btoa(binary)}`
   }
 
   /** Normalizes a previously stored SVG data URL without touching other file types. */

@@ -205,7 +205,7 @@ describe('Icon Registry & Search', () => {
   it('converts SVG content to valid data URL', () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'
     const dataUrl = IconRegistry.svgToDataUrl(svg)
-    expect(dataUrl.startsWith('data:image/svg+xml;charset=utf-8,')).toBe(true)
+    expect(dataUrl.startsWith('data:image/svg+xml;base64,')).toBe(true)
     expect(() => IconRegistry.svgToDataUrl('<svg><script>alert(1)</script></svg>')).toThrow(
       'Refusing unsafe SVG content'
     )
@@ -214,7 +214,9 @@ describe('Icon Registry & Search', () => {
   it('gives viewBox-only SVGs stable intrinsic dimensions for canvas resizing', () => {
     const svg = '<svg viewBox="0 0 512 512"><path d="M0 0h512v512H0z"/></svg>'
     const dataUrl = IconRegistry.svgToDataUrl(svg)
-    const normalizedSvg = decodeURIComponent(dataUrl.split(',')[1])
+    const normalizedSvg = new TextDecoder().decode(
+      Uint8Array.from(atob(dataUrl.split(',')[1]), (character) => character.charCodeAt(0))
+    )
 
     expect(normalizedSvg).toContain('width="512"')
     expect(normalizedSvg).toContain('height="512"')
@@ -223,7 +225,9 @@ describe('Icon Registry & Search', () => {
 
   it('normalizes legacy SVG data URLs while leaving unrelated data URLs intact', () => {
     const legacySvg = 'data:image/svg+xml;charset=utf-8,%3Csvg%20viewBox%3D%220%200%20512%20512%22%3E%3C%2Fsvg%3E'
-    const normalizedSvg = decodeURIComponent(IconRegistry.normalizeSvgDataUrl(legacySvg).split(',')[1])
+    const normalizedSvg = new TextDecoder().decode(
+      Uint8Array.from(atob(IconRegistry.normalizeSvgDataUrl(legacySvg).split(',')[1]), (character) => character.charCodeAt(0))
+    )
 
     expect(normalizedSvg).toContain('width="512"')
     expect(IconRegistry.normalizeSvgDataUrl('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA')

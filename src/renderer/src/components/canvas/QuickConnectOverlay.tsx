@@ -104,6 +104,64 @@ export const QuickConnectOverlay: React.FC<QuickConnectOverlayProps> = ({ adapte
     [elements, toScreen]
   )
 
+  /**
+   * Commits only when the user has deliberately reached another connectable
+   * element. Returning false leaves the arrow attached to the cursor instead
+   * of silently throwing the interaction away.
+   */
+  const commitDrag = useCallback(
+    (activeDrag: DragState, clientPoint: Point): boolean => {
+      if (activeDrag.kind === 'new') {
+        const source = elementsById.get(activeDrag.sourceElementId)
+        if (!source) return false
+        const candidate = getCandidate(clientPoint, new Set([source.id]), anchorScenePoint(source, activeDrag.sourceAnchor))
+        return Boolean(candidate && adapter.createQuickConnector(source.id, activeDrag.sourceAnchor, candidate.element.id, candidate.anchor))
+      }
+
+      const fixedElementId = activeDrag.endpoint === 'source' ? activeDrag.targetElementId : activeDrag.sourceElementId
+      const fixedElement = elementsById.get(fixedElementId)
+      if (!fixedElement) return false
+      const fixedAnchor = activeDrag.endpoint === 'source' ? activeDrag.targetAnchor : activeDrag.sourceAnchor
+      const candidate = getCandidate(clientPoint, new Set([fixedElementId]), anchorScenePoint(fixedElement, fixedAnchor))
+      return Boolean(candidate && adapter.reconnectQuickConnector(activeDrag.connectorId, activeDrag.endpoint, candidate.element.id, candidate.anchor))
+    },
+    [adapter, elementsById, getCandidate]
+  )
+
+  // A connection begins with a click or press on a handle. Once it begins,
+  // listen at window level because the SVG intentionally has pointer-events
+  // disabled outside its controls, while placement owns the pointer.
+  useEffect(() => {
+    if (!drag) return
+
+    const onPointerMove = (event: PointerEvent) => {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      setDrag((activeDrag) =>
+        activeDrag ? { ...activeDrag, clientPoint: { x: event.clientX, y: event.clientY } } : null
+      )
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      const clientPoint = { x: event.clientX, y: event.clientY }
+      if (commitDrag(drag, clientPoint)) {
+        setDrag(null)
+      } else {
+        // A second click on empty canvas explicitly cancels placement. Escape
+        // remains available for cancelling without clicking.
+        setDrag(null)
+      }
+    }
+
+    window.addEventListener('pointermove', onPointerMove, true)
+    window.addEventListener('pointerdown', onPointerDown, true)
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove, true)
+      window.removeEventListener('pointerdown', onPointerDown, true)
+    }
+  }, [commitDrag, drag])
+
   const beginNew = (event: React.PointerEvent<SVGElement>, source: ConnectableElement, anchor: ConnectionAnchor) => {
     event.preventDefault()
     event.stopPropagation()
@@ -145,22 +203,15 @@ export const QuickConnectOverlay: React.FC<QuickConnectOverlayProps> = ({ adapte
     event.preventDefault()
     event.stopPropagation()
     const clientPoint = { x: event.clientX, y: event.clientY }
-    if (drag.kind === 'new') {
-      const source = elementsById.get(drag.sourceElementId)
-      if (source) {
-        const candidate = getCandidate(clientPoint, new Set([source.id]), anchorScenePoint(source, drag.sourceAnchor))
-        if (candidate) adapter.createQuickConnector(source.id, drag.sourceAnchor, candidate.element.id, candidate.anchor)
-      }
-    } else {
-      const fixedElementId = drag.endpoint === 'source' ? drag.targetElementId : drag.sourceElementId
-      const fixedElement = elementsById.get(fixedElementId)
-      if (fixedElement) {
-        const fixedAnchor = drag.endpoint === 'source' ? drag.targetAnchor : drag.sourceAnchor
-        const candidate = getCandidate(clientPoint, new Set([fixedElementId]), anchorScenePoint(fixedElement, fixedAnchor))
-        if (candidate) adapter.reconnectQuickConnector(drag.connectorId, drag.endpoint, candidate.element.id, candidate.anchor)
-      }
+    if (commitDrag(drag, clientPoint)) {
+      setDrag(null)
+      return
     }
-    setDrag(null)
+
+    // Releasing away from a target enters click-to-connect mode. The arrow
+    // remains visible and follows the cursor until its endpoint reaches a
+    // target and the user clicks, rather than disappearing on a missed drop.
+    setDrag({ ...drag, clientPoint })
   }
 
   const preview = useMemo(() => {
@@ -221,9 +272,14 @@ export const QuickConnectOverlay: React.FC<QuickConnectOverlayProps> = ({ adapte
       onPointerUp={finishDrag}
       onPointerCancel={() => setDrag(null)}
     >
+      <defs>
+        <marker id="quick-connect-preview-arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+          <path d="M 0 0 L 8 4 L 0 8 z" fill="#4da3ff" />
+        </marker>
+      </defs>
       {preview && (
         <>
-          <polyline points={pointsAttribute(previewScreenPoints)} fill="none" stroke="#4da3ff" strokeWidth="2" strokeDasharray="5 4" />
+          <polyline points={pointsAttribute(previewScreenPoints)} fill="none" stroke="#4da3ff" strokeWidth="2" markerEnd="url(#quick-connect-preview-arrowhead)" />
           {preview.candidate && (() => {
             const target = preview.candidate.element
             const a = toOverlay(toScreen({ x: target.x, y: target.y }))
