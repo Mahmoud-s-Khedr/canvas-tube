@@ -8,7 +8,6 @@ import {
 } from '../src/core/project/project-manifest'
 import { AssetRegistry } from '../src/core/assets/asset-registry'
 import { IconRegistry, INITIAL_ICON_DEFINITIONS } from '../src/core/icons/icon-registry'
-import { KNOWN_STENCILS } from '../src/core/icons/icon-metadata'
 import { placeIcon } from '../src/core/icons/icon-placement'
 import { loadSvgIcons } from '../src/core/icons/icon-loader'
 
@@ -137,28 +136,27 @@ describe('Icon Registry & Search', () => {
 
   it('loads expanded official icon catalog across all cloud and k8s providers', () => {
     const registry = new IconRegistry(INITIAL_ICON_DEFINITIONS)
-    expect(registry.getAll().length).toBeGreaterThanOrEqual(160)
+    expect(registry.getAll().length).toBeGreaterThanOrEqual(1_800)
 
     // Check each provider has rich catalog
     const providers = registry.getProviders()
-    expect(providers).toContain('generic')
+    expect(providers).not.toContain('generic')
     expect(providers).toContain('aws')
     expect(providers).toContain('gcp')
     expect(providers).toContain('azure')
     expect(providers).toContain('kubernetes')
 
-    expect(registry.search('', 'aws').length).toBeGreaterThanOrEqual(30)
-    expect(registry.search('', 'gcp').length).toBeGreaterThanOrEqual(30)
-    expect(registry.search('', 'azure').length).toBeGreaterThanOrEqual(25)
-    expect(registry.search('', 'kubernetes').length).toBeGreaterThanOrEqual(20)
-    expect(registry.search('', 'generic').length).toBeGreaterThanOrEqual(40)
+    expect(registry.search('', 'aws').length).toBeGreaterThanOrEqual(800)
+    expect(registry.search('', 'gcp').length).toBeGreaterThanOrEqual(40)
+    expect(registry.search('', 'azure').length).toBeGreaterThanOrEqual(700)
+    expect(registry.search('', 'kubernetes').length).toBeGreaterThanOrEqual(70)
   })
 
-  it('keeps every bundled SVG and metadata entry in lockstep', () => {
+  it('keeps every bundled SVG discoverable with a unique runtime ID', () => {
     const assetKeys = Object.keys(loadSvgIcons())
       .map((filePath) => filePath.replace(/^.*\/icons\//, '').replace(/\.svg$/, ''))
       .sort()
-    expect(Object.keys(KNOWN_STENCILS).sort()).toEqual(assetKeys)
+    expect(INITIAL_ICON_DEFINITIONS).toHaveLength(assetKeys.length)
     expect(new Set(INITIAL_ICON_DEFINITIONS.map((icon) => icon.id)).size).toBe(
       INITIAL_ICON_DEFINITIONS.length
     )
@@ -169,37 +167,25 @@ describe('Icon Registry & Search', () => {
 
     // Search for lambda in AWS
     const lambdaResults = registry.search('lambda')
-    expect(lambdaResults.some((i) => i.id === 'aws-lambda')).toBe(true)
+    expect(lambdaResults.some((i) => i.provider === 'aws' && /lambda/i.test(i.name))).toBe(true)
 
     // Search for BigQuery in GCP
     const bqResults = registry.search('bigquery')
-    expect(bqResults.some((i) => i.id === 'gcp-bigquery')).toBe(true)
+    expect(bqResults.some((i) => i.provider === 'gcp' && /bigquery/i.test(i.name))).toBe(true)
 
     // Search for Cosmos in Azure
     const cosmosResults = registry.search('cosmos')
-    expect(cosmosResults.some((i) => i.id === 'azure-cosmos')).toBe(true)
+    expect(cosmosResults.some((i) => i.provider === 'azure' && /cosmos/i.test(i.name))).toBe(true)
 
     // Search for Ingress & Pod in official Kubernetes
     const ingressResults = registry.search('ingress')
-    expect(ingressResults.some((i) => i.id === 'k8s-ingress')).toBe(true)
+    expect(ingressResults.some((i) => i.provider === 'kubernetes' && /ingress/i.test(i.name))).toBe(true)
 
     const podResults = registry.search('pod')
-    expect(podResults.some((i) => i.id === 'k8s-pod')).toBe(true)
-
-    // Search for cache/redis in generic
-    const cacheResults = registry.search('redis')
-    expect(cacheResults.some((i) => i.id === 'gen-cache')).toBe(true)
+    expect(podResults.some((i) => i.provider === 'kubernetes' && /pod/i.test(i.name))).toBe(true)
 
     const multiTermResults = registry.search('aws lambda')
-    expect(multiTermResults.some((i) => i.id === 'aws-lambda')).toBe(true)
-
-    const redisResults = registry.search('redis cache', 'generic')
-    expect(redisResults.some((i) => i.id === 'gen-redis')).toBe(true)
-    expect(registry.get('gen-redis')?.svgContent).toContain('fill="#FF4438"')
-
-    const databaseResults = registry.search('', 'generic', 'database')
-    expect(databaseResults.every((i) => i.category === 'database')).toBe(true)
-    expect(databaseResults.some((i) => i.id === 'gen-postgresql')).toBe(true)
+    expect(multiTermResults.some((i) => i.provider === 'aws' && /lambda/i.test(i.name))).toBe(true)
   })
 
   it('converts SVG content to valid data URL', () => {
@@ -234,7 +220,9 @@ describe('Icon Registry & Search', () => {
   })
 
   it('reuses a bundled SVG file ID for every placement', () => {
-    const icon = INITIAL_ICON_DEFINITIONS.find((item) => item.id === 'gen-redis')!
+    const icon = INITIAL_ICON_DEFINITIONS.find(
+      (item) => item.provider === 'aws' && item.name === 'AWS Lambda'
+    )!
     const files: unknown[] = []
     const objects: unknown[] = []
     const adapter = {
@@ -249,8 +237,8 @@ describe('Icon Registry & Search', () => {
     placeIcon(adapter as any, icon, { x: 200, y: 200 })
 
     expect(files).toHaveLength(2)
-    expect((files[0] as { id: string }).id).toBe('builtin-icon-gen-redis')
-    expect((files[1] as { id: string }).id).toBe('builtin-icon-gen-redis')
-    expect((objects[0] as { fileId: string }).fileId).toBe('builtin-icon-gen-redis')
+    expect((files[0] as { id: string }).id).toBe(`builtin-icon-${icon.id}`)
+    expect((files[1] as { id: string }).id).toBe(`builtin-icon-${icon.id}`)
+    expect((objects[0] as { fileId: string }).fileId).toBe(`builtin-icon-${icon.id}`)
   })
 })

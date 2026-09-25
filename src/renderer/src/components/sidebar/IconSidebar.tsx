@@ -9,6 +9,10 @@ import { placeIcon } from '@core/icons/icon-placement'
 import { CanvasAdapter } from '@core/canvas/canvas-adapter'
 import { Search, ChevronLeft, ChevronRight, Layers, Box } from 'lucide-react'
 
+// Rendering thousands of preview SVGs at once makes drag-and-drop sluggish.
+// The complete catalog remains searchable; refine a broad result to see more.
+const MAX_RENDERED_ICONS = 240
+
 interface IconSidebarProps {
   adapter: CanvasAdapter | null
   isOpen: boolean
@@ -43,6 +47,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
   const filteredIcons = useMemo(() => {
     return registry.search(searchQuery, selectedProvider, selectedCategory)
   }, [registry, searchQuery, selectedProvider, selectedCategory])
+  const visibleIcons = filteredIcons.slice(0, MAX_RENDERED_ICONS)
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -134,7 +139,6 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
 
   const providers: { id: IconProvider | 'all'; label: string; count: number }[] = [
     { id: 'all', label: 'All', count: registry.getAll().length },
-    { id: 'generic', label: 'Generic', count: registry.search('', 'generic').length },
     { id: 'aws', label: 'AWS', count: registry.search('', 'aws').length },
     { id: 'gcp', label: 'GCP', count: registry.search('', 'gcp').length },
     { id: 'azure', label: 'Azure', count: registry.search('', 'azure').length },
@@ -338,6 +342,20 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
         </select>
       </div>
 
+      {filteredIcons.length > MAX_RENDERED_ICONS && (
+        <div
+          style={{
+            padding: '6px 14px',
+            color: '#a1a1aa',
+            fontSize: 10,
+            borderBottom: '1px solid #27272a',
+            flexShrink: 0
+          }}
+        >
+          Showing {MAX_RENDERED_ICONS} of {filteredIcons.length.toLocaleString()}. Search or filter to narrow results.
+        </div>
+      )}
+
       {/* Icons List Grid */}
       <div
         role="list"
@@ -354,7 +372,7 @@ export const IconSidebar: React.FC<IconSidebarProps> = ({
           alignContent: 'start'
         }}
       >
-        {filteredIcons.map((icon) => (
+        {visibleIcons.map((icon) => (
           <button
             type="button"
             key={icon.id}

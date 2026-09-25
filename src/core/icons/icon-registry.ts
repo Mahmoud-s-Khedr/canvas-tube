@@ -56,7 +56,10 @@ export class IconRegistry {
       const haystack = [icon.id, icon.name, icon.category, ...icon.tags]
         .join(' ')
         .toLowerCase()
-      return terms.every((term) => haystack.includes(term))
+      const compactHaystack = haystack.replace(/[^a-z0-9]/g, '')
+      return terms.every((term) =>
+        haystack.includes(term) || compactHaystack.includes(term.replace(/[^a-z0-9]/g, ''))
+      )
     })
   }
 
