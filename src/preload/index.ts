@@ -40,14 +40,6 @@ const desktopApi: DesktopApi = {
     return ipcRenderer.invoke('pdf:import')
   },
 
-  async readDocumentFile(projectDir: string, relativePath: string): Promise<string | null> {
-    return ipcRenderer.invoke('pdf:readDocument', { projectDir, relativePath })
-  },
-
-  async selectDirectory(): Promise<string | null> {
-    return ipcRenderer.invoke('dialog:selectDirectory')
-  },
-
   async saveExportFile(options: SaveExportFileOptions): Promise<SaveExportFileResult> {
     return ipcRenderer.invoke('export:saveFile', options)
   },

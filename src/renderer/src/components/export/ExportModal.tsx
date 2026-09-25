@@ -89,10 +89,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   // Calculate projected dimensions
   const dimensions = useMemo(() => {
-    const baseW = currentBounds?.width || 800
-    const baseH = currentBounds?.height || 600
+    const paddingForScope = scope === 'viewport' || scope === 'custom' ? 0 : padding * 2
+    const baseW = (currentBounds?.width || 800) + paddingForScope
+    const baseH = (currentBounds?.height || 600) + paddingForScope
     return calculateExportDimensions(baseW, baseH, preset)
-  }, [currentBounds, preset])
+  }, [currentBounds, padding, preset, scope])
 
   // Generate preview thumbnail
   const refreshPreview = useCallback(async () => {

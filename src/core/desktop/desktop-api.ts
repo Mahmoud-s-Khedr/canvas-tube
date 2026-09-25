@@ -61,8 +61,6 @@ export interface DesktopApi {
   ): Promise<SaveProjectResult | null>
   importAsset(): Promise<ImportAssetResult | null>
   importPdf(): Promise<ImportPdfResult | null>
-  readDocumentFile(projectDir: string, relativePath: string): Promise<string | null>
-  selectDirectory(): Promise<string | null>
   saveExportFile(options: SaveExportFileOptions): Promise<SaveExportFileResult>
   copyImageToClipboard(dataUrl: string): Promise<boolean>
   copyTextToClipboard(text: string): Promise<boolean>

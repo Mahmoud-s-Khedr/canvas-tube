@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, clipboard, nativeImage } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, IpcMainInvokeEvent } from 'electron'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
 import { ProjectService } from './services/project-service'
@@ -6,6 +6,23 @@ import { CanvasProjectBundle, validateProjectManifest } from '../core/project/pr
 import { detectCompositor, isWaylandEnv } from '../core/wayland/wayland-detector'
 
 let mainWindow: BrowserWindow | null = null
+// The renderer must never get to choose a new filesystem root. A project root
+// becomes writable only after the user selects it through an OS dialog.
+const approvedProjectDirectories = new Set<string>()
+
+function approveProjectDirectory(projectDir: string): string {
+  const resolved = path.resolve(projectDir)
+  approvedProjectDirectories.add(resolved)
+  return resolved
+}
+
+function isApprovedProjectDirectory(projectDir: string): boolean {
+  return approvedProjectDirectories.has(path.resolve(projectDir))
+}
+
+function isMainRenderer(event: IpcMainInvokeEvent): boolean {
+  return event.sender === mainWindow?.webContents
+}
 
 function isWaylandSession(): boolean {
   return isWaylandEnv(process.env)
@@ -42,6 +59,10 @@ function createWindow(): void {
     mainWindow?.show()
   })
 
+  // Keep the privileged preload bridge attached only to the application UI.
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  mainWindow.webContents.on('will-navigate', (event) => event.preventDefault())
+
   // Load renderer
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
@@ -73,18 +94,6 @@ function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('dialog:selectDirectory', async () => {
-    if (!mainWindow) return null
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Select Project Directory',
-      properties: ['openDirectory', 'createDirectory']
-    })
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
-    return result.filePaths[0]
-  })
-
   ipcMain.handle('project:open', async () => {
     if (!mainWindow) return null
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -99,7 +108,7 @@ function setupIpcHandlers(): void {
     const projectDir = result.filePaths[0]
     try {
       const opened = await ProjectService.openProject(projectDir)
-      return opened
+      return { ...opened, projectDir: approveProjectDirectory(opened.projectDir) }
     } catch (err) {
       dialog.showErrorBox('Open Project Failed', err instanceof Error ? err.message : 'Unknown error')
       return null
@@ -109,11 +118,17 @@ function setupIpcHandlers(): void {
   ipcMain.handle(
     'project:save',
     async (
-      _event,
+      event,
       args: { projectDir: string; bundle: CanvasProjectBundle; assetData?: Record<string, string> }
     ) => {
+      if (!isMainRenderer(event)) {
+        return { success: false, error: 'Untrusted renderer' }
+      }
       if (!args || typeof args.projectDir !== 'string' || !args.bundle) {
         return { success: false, error: 'Invalid save arguments' }
+      }
+      if (!isApprovedProjectDirectory(args.projectDir)) {
+        return { success: false, error: 'Project directory was not selected through CanvasTube' }
       }
 
       const validation = validateProjectManifest(args.bundle.manifest)
@@ -121,7 +136,7 @@ function setupIpcHandlers(): void {
         return { success: false, error: `Invalid project manifest: ${validation.error}` }
       }
 
-      return ProjectService.saveProject(args.projectDir, args.bundle, args.assetData)
+      return ProjectService.saveProject(path.resolve(args.projectDir), args.bundle, args.assetData)
     }
   )
 
@@ -148,7 +163,8 @@ function setupIpcHandlers(): void {
         return { success: false, error: `Invalid project manifest: ${validation.error}` }
       }
 
-      return ProjectService.saveProject(result.filePath, args.bundle, args.assetData)
+      const projectDir = approveProjectDirectory(result.filePath)
+      return ProjectService.saveProject(projectDir, args.bundle, args.assetData)
     }
   )
 
@@ -192,16 +208,6 @@ function setupIpcHandlers(): void {
       return await ProjectService.readPdfFile(result.filePaths[0])
     } catch (err) {
       dialog.showErrorBox('Import PDF Failed', err instanceof Error ? err.message : 'Unknown error')
-      return null
-    }
-  })
-
-  ipcMain.handle('pdf:readDocument', async (_event, args: { projectDir: string; relativePath: string }) => {
-    if (!args || !args.projectDir || !args.relativePath) return null
-    try {
-      return await ProjectService.readDocumentFile(args.projectDir, args.relativePath)
-    } catch (err) {
-      console.error('[pdf:readDocument] Failed:', err)
       return null
     }
   })

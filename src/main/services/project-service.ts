@@ -130,27 +130,6 @@ export class ProjectService {
     return { asset, document, pdfBase64 }
   }
 
-  public static async readDocumentFile(projectDir: string, relativePath: string): Promise<string | null> {
-    try {
-      const fullPath = this.resolveProjectPath(projectDir, relativePath)
-      if (!fullPath) return null
-      const buffer = await fs.readFile(fullPath)
-      return buffer.toString('base64')
-    } catch (err) {
-      console.error(`[ProjectService] Failed to read document file ${relativePath}:`, err)
-      return null
-    }
-  }
-
-  public static async writeDocumentFile(projectDir: string, relativePath: string, buffer: Buffer): Promise<void> {
-    const fullPath = this.resolveProjectPath(projectDir, relativePath)
-    if (!fullPath) {
-      throw new Error('Document path must stay inside the project directory')
-    }
-    await fs.mkdir(path.dirname(fullPath), { recursive: true })
-    await fs.writeFile(fullPath, buffer)
-  }
-
   private static async writeAssetData(
     projectDir: string,
     bundle: CanvasProjectBundle,

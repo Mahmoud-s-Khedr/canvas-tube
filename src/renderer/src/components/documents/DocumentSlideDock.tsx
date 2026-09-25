@@ -30,18 +30,22 @@ interface SlideMetric {
 
 interface DocumentSlideDockProps {
   documentEntry: DocumentEntry | null
+  documents: DocumentEntry[]
   pdfDoc: PDFDocumentProxy | null
   adapter: CanvasAdapter | null
   isOpen: boolean
   onClose: () => void
+  onSelectDocument: (documentId: string) => void
 }
 
 export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
   documentEntry,
+  documents,
   pdfDoc,
   adapter,
   isOpen,
-  onClose
+  onClose,
+  onSelectDocument
 }) => {
   const [selectedPage, setSelectedPage] = useState<number>(1)
   const [thumbnails, setThumbnails] = useState<Map<number, string>>(new Map())
@@ -344,6 +348,28 @@ export const DocumentSlideDock: React.FC<DocumentSlideDockProps> = ({
           <span style={{ fontWeight: 600, fontSize: 13, color: '#f4f4f5' }}>
             {documentEntry.filename}
           </span>
+          {documents.length > 1 && (
+            <select
+              aria-label="Choose PDF document"
+              value={documentEntry.id}
+              onChange={(event) => onSelectDocument(event.target.value)}
+              style={{
+                maxWidth: 190,
+                border: '1px solid #3f3f46',
+                borderRadius: 4,
+                backgroundColor: '#27272a',
+                color: '#e4e4e7',
+                fontSize: 11,
+                padding: '3px 6px'
+              }}
+            >
+              {documents.map((document) => (
+                <option key={document.id} value={document.id}>
+                  {document.filename}
+                </option>
+              ))}
+            </select>
+          )}
           <span
             style={{
               fontSize: 11,

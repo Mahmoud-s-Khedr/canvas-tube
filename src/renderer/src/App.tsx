@@ -217,6 +217,29 @@ export const App: React.FC = () => {
     adapter.deserialize({ elements: [], appState: {} })
   }, [adapter])
 
+  const loadProjectDocument = useCallback(
+    async (documentEntry: DocumentEntry, projectAssetData: Record<string, string>): Promise<boolean> => {
+      const base64 = projectAssetData[documentEntry.assetId]
+      if (!base64) {
+        showToast(`The source file for "${documentEntry.filename}" is missing or failed integrity checks.`, 'warning')
+        return false
+      }
+
+      try {
+        const pdfDoc = await PdfService.loadPdfFromBase64(base64, documentEntry.id)
+        setActivePdfDoc(pdfDoc)
+        setActiveDocument(documentEntry)
+        setIsDocumentDockOpen(true)
+        return true
+      } catch (err) {
+        console.error('[App] Failed to load project document:', err)
+        showToast(`Failed to load "${documentEntry.filename}".`, 'warning')
+        return false
+      }
+    },
+    [showToast]
+  )
+
   const handleOpenProject = useCallback(async () => {
     if (!window.desktopApi?.openProject) return
     const result = await window.desktopApi.openProject()
@@ -229,30 +252,30 @@ export const App: React.FC = () => {
       setActiveBookmarkIndex(null)
       setCustomExportBounds(null)
 
-      // Restore PDF document if present in opened project
+      // Reset first so a missing or malformed document cannot leave the
+      // previous project's PDF visible in the newly opened project.
+      setActiveDocument(null)
+      setActivePdfDoc(null)
+      setIsDocumentDockOpen(false)
+
+      // Restore one document for immediate use. The slide dock exposes a
+      // chooser for every other persisted document.
       if (result.bundle.manifest.documents.length > 0) {
         const firstDoc = result.bundle.manifest.documents[0]
-        const asset = result.bundle.manifest.assets[firstDoc.assetId]
-        if (asset && window.desktopApi.readDocumentFile) {
-          try {
-            const base64 = result.assetData[firstDoc.assetId] || await window.desktopApi.readDocumentFile(result.projectDir, asset.relativePath)
-            if (base64) {
-              const pdfDoc = await PdfService.loadPdfFromBase64(base64, firstDoc.id)
-              setActivePdfDoc(pdfDoc)
-              setActiveDocument(firstDoc)
-              setIsDocumentDockOpen(true)
-            }
-          } catch (err) {
-            console.error('[App] Failed to reload project document:', err)
-          }
-        }
-      } else {
-        setActiveDocument(null)
-        setActivePdfDoc(null)
-        setIsDocumentDockOpen(false)
+        await loadProjectDocument(firstDoc, result.assetData)
       }
     }
-  }, [adapter])
+  }, [adapter, loadProjectDocument])
+
+  const handleSelectProjectDocument = useCallback(
+    (documentId: string) => {
+      const documentEntry = manifest.documents.find((entry) => entry.id === documentId)
+      if (documentEntry) {
+        void loadProjectDocument(documentEntry, assetData)
+      }
+    },
+    [assetData, loadProjectDocument, manifest.documents]
+  )
 
   const handleRenameProject = useCallback(
     (title: string) => {
@@ -842,10 +865,12 @@ export const App: React.FC = () => {
       {!isRecordingMode && (
         <DocumentSlideDock
           documentEntry={activeDocument}
+          documents={manifest.documents}
           pdfDoc={activePdfDoc}
           adapter={adapter}
           isOpen={isDocumentDockOpen}
           onClose={() => setIsDocumentDockOpen(false)}
+          onSelectDocument={handleSelectProjectDocument}
         />
       )}
 

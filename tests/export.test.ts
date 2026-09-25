@@ -43,6 +43,23 @@ describe('calculateExportDimensions', () => {
     expect(res4k.scale).toBe(2)
   })
 
+  it('sizes a padded export to the requested output dimensions without cropping its margin', () => {
+    // The adapter passes the full drawable area (content plus both margins)
+    // to this calculation. Keeping 4K at 3840px leaves room for the margin
+    // instead of clipping the content at the right and bottom edges.
+    const contentWidth = 1920
+    const contentHeight = 1080
+    const padding = 16
+    const result = calculateExportDimensions(
+      contentWidth + padding * 2,
+      contentHeight + padding * 2,
+      '4k'
+    )
+
+    expect(result.width).toBe(3840)
+    expect(result.height).toBe(Math.round((3840 * (contentHeight + padding * 2)) / (contentWidth + padding * 2)))
+  })
+
   it('calculates 8K FUHD preset to 7680px width maintaining aspect ratio', () => {
     const baseW = 1920
     const baseH = 1080

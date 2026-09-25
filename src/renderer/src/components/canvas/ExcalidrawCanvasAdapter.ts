@@ -820,19 +820,27 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
       throw new Error('Canvas scene is empty. Nothing to export.')
     }
 
-    let baseWidth = 800
-    let baseHeight = 600
+    let contentWidth = 800
+    let contentHeight = 600
 
     if (exportingFrame) {
-      baseWidth = exportingFrame.width
-      baseHeight = exportingFrame.height
+      contentWidth = exportingFrame.width
+      contentHeight = exportingFrame.height
     } else {
       const bounds = this.getExportBounds(config.scope === 'selection' ? 'selection' : 'all')
       if (bounds) {
-        baseWidth = bounds.width
-        baseHeight = bounds.height
+        contentWidth = bounds.width
+        contentHeight = bounds.height
       }
     }
+
+    const exportPadding =
+      config.scope === 'viewport' || config.scope === 'custom' ? 0 : (config.padding ?? 16)
+    // Excalidraw applies exportPadding before drawing. Size the output from
+    // those padded bounds as well; otherwise the requested canvas dimensions
+    // are too small and crop the right and bottom of PNG exports.
+    const baseWidth = contentWidth + exportPadding * 2
+    const baseHeight = contentHeight + exportPadding * 2
 
     const { width: targetWidth, height: targetHeight, scale: targetScale } =
       calculateExportDimensions(
@@ -847,9 +855,6 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
     const exportWithDarkMode = config.backgroundMode === 'dark'
     const viewBackgroundColor =
       config.backgroundColor || (config.backgroundMode === 'light' ? '#ffffff' : '#121212')
-    const exportPadding =
-      config.scope === 'viewport' || config.scope === 'custom' ? 0 : (config.padding ?? 16)
-
     const currentAppState = this.api.getAppState()
 
     if (config.format === 'png') {
