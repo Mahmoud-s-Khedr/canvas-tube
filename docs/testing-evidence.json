@@ -152,7 +152,10 @@
           "skipped": 0,
           "pct": 100
         }
-      }
+      },
+      "independentStepsRunUrl": "https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37233668847",
+      "independentStepsConclusion": "success",
+      "independentStepsCommit": "363d7c1"
     }
   },
   "gatedCommit": "25b7058bfda1499ffb7b2cdacc06881cca9e6a2f"

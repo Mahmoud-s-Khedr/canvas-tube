@@ -141,6 +141,8 @@ and documentation, with the application and tests preserved at that measured rev
 After gate activation, the complete [Fedora workflow](https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232857511)
 and [Windows workflow](https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232860171)
 both passed at gate revision `25b7058bfda1499ffb7b2cdacc06881cca9e6a2f` with enforcement enabled.
+The subsequent [Windows run with independent native-command steps](https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37233668847)
+also passed the complete gated workflow at `363d7c1`.
 
 For future verified improvements, download each platform's `coverage/coverage-summary.json`, then run:
 
@@ -157,6 +159,7 @@ threshold can be checked without editing version-controlled minimums:
 npm run test:coverage -- --coverage.thresholds.statements=100
 ```
 
-This command must exit nonzero while the ordinary suite passes. Both platform workflows have passed. Fedora hardware release evidence remains
-incomplete and must be recorded separately; automated success does not satisfy
+This command must exit nonzero while the ordinary suite passes; the 100% override
+was verified to fail locally. Both platform workflows have passed. Fedora hardware
+release evidence remains incomplete and must be recorded separately; automated success does not satisfy
 the GNOME/KDE Wayland hardware requirements.
