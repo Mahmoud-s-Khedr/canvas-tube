@@ -45,6 +45,40 @@
           "skipped": 0,
           "pct": 100
         }
+      },
+      "gatedRunUrl": "https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232857511",
+      "gatedConclusion": "success",
+      "gatedCoverageTotal": {
+        "lines": {
+          "total": 11693,
+          "covered": 8143,
+          "skipped": 0,
+          "pct": 69.63
+        },
+        "statements": {
+          "total": 11693,
+          "covered": 8143,
+          "skipped": 0,
+          "pct": 69.63
+        },
+        "functions": {
+          "total": 395,
+          "covered": 246,
+          "skipped": 0,
+          "pct": 62.27
+        },
+        "branches": {
+          "total": 1694,
+          "covered": 1245,
+          "skipped": 0,
+          "pct": 73.49
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
       }
     },
     "windows": {
@@ -84,7 +118,42 @@
           "skipped": 0,
           "pct": 100
         }
+      },
+      "gatedRunUrl": "https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232860171",
+      "gatedConclusion": "success",
+      "gatedCoverageTotal": {
+        "lines": {
+          "total": 11693,
+          "covered": 8138,
+          "skipped": 0,
+          "pct": 69.59
+        },
+        "statements": {
+          "total": 11693,
+          "covered": 8138,
+          "skipped": 0,
+          "pct": 69.59
+        },
+        "functions": {
+          "total": 395,
+          "covered": 245,
+          "skipped": 0,
+          "pct": 62.02
+        },
+        "branches": {
+          "total": 1693,
+          "covered": 1244,
+          "skipped": 0,
+          "pct": 73.47
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
       }
     }
-  }
+  },
+  "gatedCommit": "25b7058bfda1499ffb7b2cdacc06881cca9e6a2f"
 }

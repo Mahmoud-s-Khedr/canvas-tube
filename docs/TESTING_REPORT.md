@@ -108,7 +108,9 @@ uses the viewport and includes native save plus feedback. RAF frame intervals ar
 sampled during wheel input. CDP heap samples follow ten real create/delete/import/reset
 cycles. Samples without forced GC do not establish the absence of leaks. These timings
 are advisory, run only on main pushes/manual dispatch in a separate workflow, and are
-retained for 14 days. They are not PR performance gates.
+retained for 14 days. They are not PR performance gates. The new advisory workflow
+becomes available for GitHub manual dispatch once this branch is merged into the
+default branch; its renderer command has passed locally.
 
 [Fedora release QA](INPUT-TESTING.md) requires separate actual GNOME and KDE Wayland
 records using the [evidence template](release-qa/TEMPLATE.md), packaged AppImage,
@@ -134,7 +136,9 @@ Both workflows passed 209 Vitest tests, three compiled smoke tests, unpacked lau
 application packaging, typecheck and lint. [Recorded evidence](testing-evidence.json)
 retains metric counts and run provenance. Gate activation changes test configuration
 and documentation, with the application and tests preserved at that measured revision.
-The same workflows are rerun after activation to verify enforcement on both platforms.
+After gate activation, the complete [Fedora workflow](https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232857511)
+and [Windows workflow](https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232860171)
+both passed at gate revision `25b7058bfda1499ffb7b2cdacc06881cca9e6a2f` with enforcement enabled.
 
 For future verified improvements, download each platform's `coverage/coverage-summary.json`, then run:
 
