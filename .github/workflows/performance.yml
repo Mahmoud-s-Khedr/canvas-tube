@@ -1,0 +1,31 @@
+name: Advisory performance measurements
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0 libnss3 libgbm1 libasound2t64
+      - run: npm ci
+      - run: npm run build
+      - run: npm run benchmark
+      - run: xvfb-run -a -s '-screen 0 1920x1080x24' npm run benchmark:renderer
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: canvastube-advisory-performance
+          path: |
+            benchmark-results/
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: warn

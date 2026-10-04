@@ -1,202 +1,33 @@
-# Hardware Tablet & Stylus Testing Guide (Linux Wayland & Windows)
+# Fedora tablet release QA
 
-This guide details the hardware verification, driver setup, and manual testing procedures for **CanvasTube** running on **Fedora Linux (Wayland)** and **Windows 10 & 11** with drawing tablets (XP-Pen Deco 01 V3, Wacom, Huion).
+A release requires hardware records for **GNOME Wayland and KDE Wayland** using the
+packaged AppImage. Start with the [evidence template](release-qa/TEMPLATE.md) and follow
+the [recording instructions](release-qa/README.md). Every check starts incomplete;
+only observed results with evidence can change that status. Windows manual release
+QA is deferred; Windows Electron automation remains in CI.
 
----
+Before testing, record the package version, full commit, SHA-256, Fedora/kernel,
+compositor version, tablet and driver, display mapping/scaling, tester and date.
+Confirm `XDG_SESSION_TYPE=wayland`; Xvfb/X11 smoke results cannot replace these records.
+Launch the AppImage as a normal desktop user.
 
-## 1. Hardware & System Profiles
+Use Fedora Settings → Drawing Tablet on GNOME, or System Settings → Drawing Tablet
+on KDE, to map the device to the drawing display. Driver UI names vary by version;
+record the settings actually used. Identify the USB device with `lsusb`. If available,
+use `libinput list-devices` and `evtest` to distinguish driver/input problems from
+application behavior. These diagnostics do not establish application support.
 
-### Linux Profile
-- **Primary Target OS**: Fedora Linux 40 / 41+ (Workstation / GNOME or KDE Spin)
-- **Display Server Protocol**: Wayland (`XDG_SESSION_TYPE=wayland`)
-- **Input Subsystem**: `libinput` kernel driver
-- **Target Tablet**: XP-Pen Deco 01 V3 (USB Digitizer, 8192 pressure levels, ±60° tilt)
-- **Application Engine**: Electron 34 / Chromium 132 / React 18 / Excalidraw
+Open CanvasTube's Stylus Inspector and record pointer type, pressure, tilt and buttons
+while performing the real drawing checks. Compare inspector values with visible stroke
+behavior. Do not assume tablet brand, pressure resolution, tilt support or palm rejection
+from a generic pen event. Test the eraser, every barrel button and tool restoration.
+Record unsupported controls explicitly with issue links.
 
-### Windows Profile
-- **Target OS**: Windows 10 (Build 19041+) and Windows 11 (22H2 / 23H2 / 24H2)
-- **Input Subsystem**: Windows Ink / DirectManipulation / WM_POINTER
-- **Target Tablets**: XP-Pen, Wacom Intuos/One, Huion Inspiroy, Microsoft Surface Pen
+Complete shortcut, editable-field suppression, zoom/pan, native clipboard, PNG/SVG,
+project save/reopen, PDF annotation, and offline font/asset checks. Include a continuous
+drawing session of at least 60 minutes, with timestamps, saved artifacts, observed
+responsiveness and any crashes. Record each result individually for both compositors.
 
----
-
-## 2. Linux Driver & System Verification
-
-### Step 1: Verify USB Connection
-
-Open a terminal on your Fedora workstation and confirm the tablet is detected by the USB subsystem:
-
-```bash
-lsusb | grep -i "xp-pen\|ugee\|tablet"
-```
-
-*Expected output*: A device identifier from Hanvon/Ugee/XP-Pen (e.g., `Bus 001 Device 004: ID 28bd:0905 XP-Pen Deco 01 V3`).
-
-### Step 2: Verify `libinput` Tablet Recognition
-
-Inspect `libinput` to confirm Linux recognizes the device as a digitizer tablet rather than a standard mouse:
-
-```bash
-# List all recognized input devices
-libinput list-devices | grep -A 10 -i "deco\|tablet\|stylus"
-```
-
-Look for:
-- **Capabilities**: `tablet-pad` and `tablet-tool`
-- **Pressure Levels**: Up to `8192`
-- **Tilt**: Supported on X and Y axes
-
-### Step 3: Test Hardware Event Stream (`evtest`)
-
-If you experience issues, verify raw kernel events using `evtest`:
-
-```bash
-sudo dnf install -y evtest
-sudo evtest
-```
-
-Select the XP-Pen Stylus event device and draw on the active area. You should observe continuous `ABS_PRESSURE`, `ABS_TILT_X`, and `ABS_TILT_Y` values updating.
-
----
-
-## 3. Wayland Electron Configuration
-
-CanvasTube automatically detects Wayland sessions and configures Chromium's Ozone platform flags in `src/main/index.ts`:
-
-- `--enable-features=UseOzonePlatform`
-- `--ozone-platform=wayland`
-- `--enable-pointer-lock-options`
-
-To manually force native Wayland mode when launching development builds:
-
-```bash
-ELECTRON_OZONE_PLATFORM_HINT=wayland npm run dev
-```
-
----
-
-## 4. Windows 10 & 11 Driver & Setup Guide
-
-### Step 1: Windows Ink Configuration
-1. Open **Windows Settings** → **Bluetooth & devices** → **Pen & Windows Ink**.
-2. Ensure **Windows Ink** is active.
-3. Open your tablet vendor driver (e.g. XP-Pen Pentablet / Wacom Tablet Properties) and verify **Windows Ink** checkbox is **checked**.
-   *(CanvasTube uses Chromium's native DirectManipulation pipeline, which expects Windows Ink pointer events for sub-pixel accuracy and high-resolution pressure).*
-
-### Step 2: Running CanvasTube on Windows
-- For standalone testing without installation, download or build the portable executable `CanvasTube <version>.exe`.
-- Run `CanvasTube.exe`. No driver reboot or administrator permissions required.
-
----
-
-## 5. Live Stylus & Pointer Inspector Walkthrough
-
-CanvasTube includes a built-in developer **Stylus & Pointer Inspector** specifically engineered to diagnose tablet driver behavior across Wayland and Windows.
-
-### Tablet controls during normal use
-
-The lower-right **Tablet** dock is the day-to-day control surface (the inspector is for
-diagnostics). Its preferences are stored locally for the next launch:
-
-- **Palm lock** ignores touch input while a pen contact is active, preventing a resting
-  hand from creating marks or moving the canvas.
-- **Barrel button erases** treats either standard barrel switch as a momentary eraser.
-  A physical eraser-end is also recognized. Releasing it restores the previous tool.
-
-CanvasTube does not synthesize pressure: Excalidraw receives the native pen event and
-stores its pressure samples with the freehand stroke. The inspector additionally shows
-coalesced browser samples so a high-rate tablet can be checked without losing fidelity
-to event throttling.
-
-### Tablet express-key mapping
-
-Map tablet express keys or a pen remote to these single-key shortcuts: **V** select,
-**P** ink, **E** eraser, **R** rectangle, **D** diamond, **O** ellipse, **A** arrow,
-**L** line, **T** text, and **K** laser. Standard Excalidraw shortcuts such as
-Space-to-pan and Ctrl/Cmd+Z undo remain available.
-
-### Opening the Inspector
-
-- Click the **"Stylus Inspector"** button in the top toolbar, OR
-- Press **`Ctrl + Shift + I`**
-
-### What to Verify
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ [Activity] Stylus & Pointer Inspector               [X] │
-├─────────────────────────────────────────────────────────┤
-│ [Tablet] PEN           [XP-PEN / STYLUS DETECTED]       │
-├─────────────────────────────────────────────────────────┤
-│ Client (X, Y): 842, 412     │ Canvas (X, Y): 120, -85   │
-│ Tilt (X / Y):  14° / -22°   │ Buttons / ID:  btn:1 (id:3)│
-├─────────────────────────────────────────────────────────┤
-│ Stylus Pressure: 0.642 (64%)                            │
-│ [████████████████████░░░░░░░░░░░░░░]                    │
-├─────────────────────────────────────────────────────────┤
-│ Host: linux (x64) • Wayland                             │
-│ (or Host: win32 (x64) • Windows (PointerEvents))        │
-│ Electron: v34.5.8 • Chrome: v132.0.6834.196            │
-├─────────────────────────────────────────────────────────┤
-│ Recent Pointer Trail: [||||||||]                        │
-└─────────────────────────────────────────────────────────┘
-```
-
-1. **Device Mode Badge**:
-   - Touch with Mouse ➔ Displays `MOUSE` in gray.
-   - Touch with XP-Pen Stylus ➔ Immediately switches to **`PEN / XP-PEN DETECTED`** with a green badge.
-   - Touch with Finger (touchscreens) ➔ Displays `TOUCH` in amber.
-
-2. **Pressure Gauge**:
-   - Light hover/touch ➔ Pressure displays low values (`0.01` to `0.20`).
-   - Firm press ➔ Gauge smoothly climbs through green into red (`0.75` to `1.00`).
-   - Confirm pressure transitions smoothly without stepped quantization (8192 levels supported).
-
-3. **Tilt Coordinates**:
-   - Tilt stylus forward/backward ➔ `tiltY` moves between `-60°` and `+60°`.
-   - Tilt stylus left/right ➔ `tiltX` moves between `-60°` and `+60°`.
-
-4. **Stylus Buttons**:
-   - Default tip touch: `buttons: 1`
-   - Barrel lower button click: `buttons: 2`
-   - Barrel upper button click: `buttons: 4`
-
-5. **Host Environment Indicator**:
-   - On Linux Wayland: `Host: linux (x64) • Wayland`
-   - On Windows: `Host: win32 (x64) • Windows (PointerEvents / DirectManipulation)`
-
----
-
-## 6. Linux Wayland Desktop Calibration & Multi-Monitor Setup
-
-On multi-monitor Wayland setups (e.g. laptop screen + 4K external display), Fedora GNOME or KDE may map the tablet across all monitors by default, skewing aspect ratios.
-
-### GNOME Wayland Configuration
-
-1. Open **Fedora Settings** ➔ **Drawing Tablet**.
-2. Under **Tablet**, set **Display Mapping** to your primary recording monitor (e.g., `4K Display`).
-3. Set **Tracking Mode** to **Absolute**.
-4. Adjust the **Pressure Curve** slider to match your physical hand pressure preference.
-
-### KDE Plasma Wayland Configuration
-
-1. Open **System Settings** ➔ **Input Devices** ➔ **Drawing Tablet**.
-2. Select your XP-Pen Deco 01 V3 and map to the specific screen output.
-
----
-
-## 7. Manual QA Checklist for Release Testing
-
-Before publishing a release, complete this verification checklist:
-
-| Test Case | Steps | Expected Result | Linux Wayland | Windows 10/11 |
-|---|---|---|---|---|
-| **TC-01: Stylus Detection** | Hover and touch stylus to canvas | Inspector badge shows `PEN / XP-PEN DETECTED` | [ ] | [ ] |
-| **TC-02: Pressure Response** | Draw freehand line with varying hand pressure | Stroke width smoothly reflects pressure variations | [ ] | [ ] |
-| **TC-03: Palm Rejection** | Rest palm on tablet while drawing with stylus | Hand contact produces no stray lines or gestures | [ ] | [ ] |
-| **TC-04: Recording Mode Hotkey** | Press `F10` or `Ctrl + Shift + R` | Toolbars and sidebars collapse; recording tag appears | [ ] | [ ] |
-| **TC-05: Exit Recording Mode** | Press `Esc` or click Exit badge | Standard application UI and toolbars re-appear | [ ] | [ ] |
-| **TC-06: Architecture Stencils** | Search "Database" and click/drag icon | Stencil SVG appears centered in canvas viewport | [ ] | [ ] |
-| **TC-07: Project Save & Re-open** | Draw diagram, save project, reload app, open folder | Elements, assets, and positions reload accurately | [ ] | [ ] |
-| **TC-08: Offline Font Rendering** | Disconnect network, launch app | Hand-drawn fonts render crisp without remote CDN fetches | [ ] | [ ] |
-| **TC-09: Portable Launch (Win)** | Double-click `CanvasTube <ver>.exe` | App boots cleanly without administrator elevation | N/A | [ ] |
+A release stays QA-incomplete while either compositor record or required evidence is
+missing. Link failures and unsupported capabilities to issues and record the release
+decision; automation cannot make that decision from synthetic input or simulated memory.

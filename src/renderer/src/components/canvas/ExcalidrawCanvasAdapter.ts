@@ -937,6 +937,11 @@ export class ExcalidrawCanvasAdapter implements CanvasAdapter {
       this.unsubscribeOnChange = undefined
     }
     this.api = null
+    this.keyboardTarget = null
+    this.pointerListener = undefined
+    this.changeListener = undefined
+    this.sceneSubscribers.clear()
+    this.pendingScene = null
   }
 
   private mapToExcalidrawTool(tool: CanvasToolType): string {

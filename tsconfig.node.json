@@ -2,7 +2,10 @@
   "compilerOptions": {
     "composite": true,
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
@@ -10,7 +13,9 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
-      "@core/*": ["./src/core/*"]
+      "@core/*": [
+        "./src/core/*"
+      ]
     }
   },
   "include": [
@@ -18,6 +23,12 @@
     "src/main/**/*",
     "src/preload/**/*",
     "src/core/**/*",
-    "tests/project-service.test.ts"
+    "tests/project-service.test.ts",
+    "tests/ipc-handlers.test.ts",
+    "tests/preload.test.ts",
+    "tests/main-window.test.ts",
+    "e2e/**/*.ts",
+    "playwright.config.ts",
+    "tests/project-failures.test.ts"
   ]
 }

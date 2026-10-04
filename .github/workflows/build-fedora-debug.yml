@@ -25,55 +25,35 @@ jobs:
 
       - name: Build CanvasTube in Official Fedora 41 Container
         run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -w /workspace \
-            -e CI=true \
-            -e NODE_ENV=development \
-            -e DEBUG=electron-builder \
+          docker run --rm -i \
+            -v "${{ github.workspace }}:/workspace" -w /workspace \
+            -e CI=true -e NODE_ENV=development \
             -e BUILD_RPM="${{ github.event.inputs.build_rpm || 'false' }}" \
-            fedora:41 bash -c "
-              set -euo pipefail
-
-              echo '=== 1. Updating Fedora Repositories & Installing Dependencies ==='
-              dnf update -y --setopt=install_weak_deps=False
-              dnf install -y --setopt=install_weak_deps=False nodejs npm git tar gzip rpm-build
-
-              echo '=== 2. Toolchain Information ==='
-              cat /etc/fedora-release
-              node --version
-              npm --version
-              rpmbuild --version
-
-              echo '=== 3. Clean Installing Node Dependencies ==='
-              npm ci
-
-              echo '=== 4. Verifying TypeScript Types ==='
-              npm run typecheck
-
-              echo '=== 5. Running Automated Unit Tests with Coverage ==='
-              npm run test:coverage
-
-              echo '=== 6. Running Linter Checks ==='
-              npm run lint
-
-              echo '=== 7. Compiling Application & Packaging Debug Linux Binary & AppImage ==='
-              npm run build:linux:debug
-              npx electron-builder --linux AppImage --publish never
-
-              if [ \"\$BUILD_RPM\" = \"true\" ]; then
-                echo '=== Optional: Packaging Fedora RPM ==='
-                npx electron-builder --linux rpm --publish never
-              fi
-
-              echo '=== 8. Archiving Debug Artifact ==='
-              cd dist
-              tar -czf canvastube-fedora-debug-x64.tar.gz linux-unpacked/
-              echo 'Archive canvastube-fedora-debug-x64.tar.gz generated successfully.'
-              ls -lh canvastube-fedora-debug-x64.tar.gz
-              echo 'AppImage generated successfully:'
-              ls -lh *.AppImage
-            "
+            fedora:41 bash -s <<'FEDORA'
+          set -euo pipefail
+          dnf install -y --setopt=install_weak_deps=False nodejs npm git tar gzip rpm-build \
+            gtk3 nss alsa-lib libX11 libXcomposite libXdamage libXrandr libxkbcommon \
+            mesa-libgbm xorg-x11-server-Xvfb xorg-x11-xauth dbus-libs at-spi2-atk
+          useradd --uid 1000 --create-home tester
+          chown -R tester:tester /workspace
+          runuser -u tester -- bash -s <<'TESTS'
+          set -euo pipefail
+          npm ci
+          npm run typecheck
+          npm run test:coverage
+          npm run lint
+          npm run build
+          xvfb-run -a -s '-screen 0 1920x1080x24' npm run test:e2e
+          npx electron-builder --linux --dir --publish never
+          xvfb-run -a -s '-screen 0 1920x1080x24' npm run test:e2e:packaged -- --grep launch
+          npx electron-builder --linux AppImage --publish never
+          if [ "$BUILD_RPM" = "true" ]; then
+            npx electron-builder --linux rpm --publish never
+          fi
+          cd dist
+          tar -czf canvastube-fedora-debug-x64.tar.gz linux-unpacked/
+          TESTS
+          FEDORA
 
       - name: Upload Fedora Debug Build Artifact
         uses: actions/upload-artifact@v4
@@ -106,5 +86,16 @@ jobs:
         with:
           name: canvastube-fedora-rpm
           path: dist/*.rpm
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Fedora Electron diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-fedora-electron-tests
+          path: |
+            playwright-report/
+            test-results/
           if-no-files-found: warn
           retention-days: 14

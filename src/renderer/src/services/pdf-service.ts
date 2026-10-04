@@ -165,28 +165,26 @@ export class PdfService {
     }
   }
 
-  public static clearCache(): void {
-    for (const doc of this.cache.values()) {
+  private static disposeDocument(doc: PDFDocumentProxy): void {
+    for (const dispose of [() => doc.cleanup(), () => doc.loadingTask?.destroy?.()]) {
       try {
-        doc.cleanup()
-        doc.loadingTask?.destroy?.()
+        void Promise.resolve(dispose()).catch((err) => {
+          console.warn('[PdfService] Error cleaning up PDF document:', err)
+        })
       } catch (err) {
         console.warn('[PdfService] Error cleaning up PDF document:', err)
       }
     }
+  }
+
+  public static clearCache(): void {
+    for (const doc of this.cache.values()) this.disposeDocument(doc)
     this.cache.clear()
   }
 
   public static evictDocument(docId: string): void {
     const doc = this.cache.get(docId)
-    if (doc) {
-      try {
-        doc.cleanup()
-        doc.loadingTask?.destroy?.()
-      } catch (err) {
-        console.warn('[PdfService] Error cleaning up PDF document:', err)
-      }
-      this.cache.delete(docId)
-    }
+    if (doc) this.disposeDocument(doc)
+    this.cache.delete(docId)
   }
 }

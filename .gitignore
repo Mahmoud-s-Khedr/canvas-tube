@@ -7,3 +7,6 @@ coverage/
 *.log
 .DS_Store
 References-project/
+test-results/
+playwright-report/
+benchmark-results/

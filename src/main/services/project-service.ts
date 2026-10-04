@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import * as crypto from 'node:crypto'
+import { assetBase64 } from '../../core/assets/base64'
 import {
   CanvasProjectBundle,
   serializeProjectBundle,
@@ -24,10 +25,14 @@ export class ProjectService {
       const { projectJson, sceneJson } = serializeProjectBundle(bundle)
 
       await this.writeAssetData(projectDir, bundle, assetData)
-      await Promise.all([
+      // Each file is atomic; the pair is deliberately not a transaction. Wait
+      // for both writes to settle before returning failure or cleaning up.
+      const writes = await Promise.allSettled([
         this.writeFileAtomically(path.join(projectDir, 'project.json'), projectJson),
         this.writeFileAtomically(path.join(projectDir, 'scene.json'), sceneJson)
       ])
+      const failure = writes.find((result) => result.status === 'rejected')
+      if (failure?.status === 'rejected') throw failure.reason
 
       console.log(`[ProjectService] Successfully saved project to: ${projectDir}`)
       return { success: true, path: projectDir }
@@ -144,7 +149,7 @@ export class ProjectService {
         throw new Error(`Invalid path for asset "${asset.originalFilename}"`)
       }
 
-      const base64 = encoded.replace(/^data:[^,]*,/, '').replace(/\s/g, '')
+      const base64 = assetBase64(encoded)
       const buffer = Buffer.from(base64, 'base64')
       const hash = crypto.createHash('sha256').update(buffer).digest('hex')
       if (hash !== asset.hash) {
@@ -185,17 +190,21 @@ export class ProjectService {
   }
 
   private static resolveProjectPath(projectDir: string, relativePath: string): string | null {
-    if (!relativePath || path.isAbsolute(relativePath)) return null
+    if (!relativePath || path.isAbsolute(relativePath) || path.win32.isAbsolute(relativePath)) return null
 
     const root = path.resolve(projectDir)
-    const resolved = path.resolve(root, relativePath)
-    return resolved === root || resolved.startsWith(`${root}${path.sep}`) ? resolved : null
+    const resolved = path.resolve(root, relativePath.replace(/\\/g, path.sep))
+    return resolved !== root && resolved.startsWith(`${root}${path.sep}`) ? resolved : null
   }
 
   private static async writeFileAtomically(filePath: string, data: string | Buffer): Promise<void> {
     const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`
-    await fs.writeFile(temporaryPath, data)
-    await fs.rename(temporaryPath, filePath)
+    try {
+      await fs.writeFile(temporaryPath, data)
+      await fs.rename(temporaryPath, filePath)
+    } finally {
+      await fs.rm(temporaryPath, { force: true }).catch(() => {})
+    }
   }
 
   private static getMimeType(ext: string): string {

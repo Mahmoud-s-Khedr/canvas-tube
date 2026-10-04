@@ -22,6 +22,9 @@ export default tseslint.config(
       'out/**',
       'dist/**',
       'coverage/**',
+      'test-results/**',
+      'playwright-report/**',
+      'benchmark-results/**',
       'node_modules/**',
       'src/renderer/public/**',
       'References-project/**'

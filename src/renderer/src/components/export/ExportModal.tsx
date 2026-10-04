@@ -249,7 +249,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         inset: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.75)',
         backdropFilter: 'blur(4px)',
-        zIndex: 500,
+        zIndex: 2000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'

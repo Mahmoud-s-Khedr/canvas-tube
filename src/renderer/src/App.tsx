@@ -133,11 +133,15 @@ export const App: React.FC = () => {
     type: 'info' | 'success' | 'warning'
   } | null>(null)
 
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(toastTimer.current), [])
+
   const showToast = useCallback(
     (message: string, type: 'info' | 'success' | 'warning' = 'info') => {
       const id = Date.now()
       setToast({ id, message, type })
-      setTimeout(() => {
+      clearTimeout(toastTimer.current)
+      toastTimer.current = setTimeout(() => {
         setToast((current) => (current?.id === id ? null : current))
       }, 3500)
     },
@@ -196,8 +200,7 @@ export const App: React.FC = () => {
     if (window.desktopApi?.getSystemInfo) {
       window.desktopApi.getSystemInfo().then((info) => {
         setSystemInfo(info)
-        console.log('[App] System info:', info)
-      })
+      }).catch(() => showToast('System information is unavailable.', 'warning'))
     }
   }, [])
 
@@ -241,7 +244,8 @@ export const App: React.FC = () => {
   )
 
   const handleOpenProject = useCallback(async () => {
-    if (!window.desktopApi?.openProject) return
+    try {
+    if (!window.desktopApi?.openProject) { showToast('Desktop API is unavailable.', 'warning'); return }
     const result = await window.desktopApi.openProject()
     if (result) {
       PdfService.clearCache()
@@ -264,6 +268,9 @@ export const App: React.FC = () => {
         const firstDoc = result.bundle.manifest.documents[0]
         await loadProjectDocument(firstDoc, result.assetData)
       }
+    }
+    } catch (err) {
+      showToast(`Open failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'warning')
     }
   }, [adapter, loadProjectDocument])
 
@@ -292,7 +299,8 @@ export const App: React.FC = () => {
   )
 
   const handleSaveProject = useCallback(async () => {
-    if (!window.desktopApi?.saveProject) return
+    try {
+    if (!window.desktopApi?.saveProject) { showToast('Desktop API is unavailable.', 'warning'); return }
     const sceneData = adapter.serialize()
 
     if (!projectDir) {
@@ -305,6 +313,7 @@ export const App: React.FC = () => {
         setProjectDir(saveAsResult.path)
         showToast('Project saved successfully!', 'success')
       }
+      if (saveAsResult && !saveAsResult.success) showToast(`Save failed: ${saveAsResult.error || 'Unknown error'}`, 'warning')
       return
     }
 
@@ -317,10 +326,14 @@ export const App: React.FC = () => {
     } else {
       showToast('Project saved successfully!', 'success')
     }
+    } catch (err) {
+      showToast(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'warning')
+    }
   }, [adapter, assetData, manifest, projectDir, showToast])
 
   const handleSaveProjectAs = useCallback(async () => {
-    if (!window.desktopApi?.saveProjectAs) return
+    try {
+    if (!window.desktopApi?.saveProjectAs) { showToast('Desktop API is unavailable.', 'warning'); return }
     const sceneData = adapter.serialize()
     const saveAsResult = await window.desktopApi.saveProjectAs(manifest.title, {
       manifest,
@@ -329,6 +342,10 @@ export const App: React.FC = () => {
     if (saveAsResult?.success && saveAsResult.path) {
       setProjectDir(saveAsResult.path)
       showToast('Project saved as new file!', 'success')
+    }
+    if (saveAsResult && !saveAsResult.success) showToast(`Save As failed: ${saveAsResult.error || 'Unknown error'}`, 'warning')
+    } catch (err) {
+      showToast(`Save As failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'warning')
     }
   }, [adapter, assetData, manifest, showToast])
 
@@ -569,20 +586,12 @@ export const App: React.FC = () => {
   }, [])
 
   const handleImportImage = useCallback(async () => {
-    if (!window.desktopApi?.importAsset) return
+    try {
+    if (!window.desktopApi?.importAsset) { showToast('Desktop API is unavailable.', 'warning'); return }
     const result = await window.desktopApi.importAsset()
     if (!result) return
 
     const { asset, dataUrl } = result
-
-    // Update manifest assets
-    setManifest((prev) => ({
-      ...prev,
-      assets: {
-        ...prev.assets,
-        [asset.id]: asset
-      }
-    }))
 
     // Add file to adapter
     const fileId = `file_${asset.hash.substring(0, 12)}`
@@ -604,16 +613,29 @@ export const App: React.FC = () => {
       height: 300,
       fileId
     })
+    // Update manifest assets
+    setManifest((prev) => ({
+      ...prev,
+      assets: {
+        ...prev.assets,
+        [asset.id]: asset
+      }
+    }))
+
     showToast('Image inserted onto canvas', 'success')
     setAssetData((previous) => ({
       ...previous,
       [asset.id]: dataUrl.split(',')[1] || dataUrl
     }))
+    } catch (err) {
+      showToast(`Image import failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'warning')
+    }
   }, [adapter, showToast])
 
   // PDF import handler
   const handleImportPdf = useCallback(async () => {
-    if (!window.desktopApi?.importPdf) return
+    try {
+    if (!window.desktopApi?.importPdf) { showToast('Desktop API is unavailable.', 'warning'); return }
     const result = await window.desktopApi.importPdf()
     if (!result) return
 
@@ -644,6 +666,9 @@ export const App: React.FC = () => {
         `Failed to parse and load PDF document: ${err instanceof Error ? err.message : 'Unknown error'}`,
         'warning'
       )
+    }
+    } catch (err) {
+      showToast(`PDF import failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'warning')
     }
   }, [showToast])
 
@@ -685,6 +710,7 @@ export const App: React.FC = () => {
         showToast(`Slide ${pageNumber} placed onto canvas`, 'success')
       } catch (err) {
         console.error('[App] Failed placing dropped slide page:', err)
+        showToast('Failed to place PDF slide onto canvas.', 'warning')
       }
     },
     [activePdfDoc, activeDocument, adapter, showToast]

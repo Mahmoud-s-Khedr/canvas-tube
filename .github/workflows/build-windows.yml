@@ -38,6 +38,9 @@ jobs:
       - name: Compile and Package Windows Binaries
         run: |
           npm run build
+          npm run test:e2e
+          npx electron-builder --win --dir --publish never
+          npm run test:e2e:packaged -- --grep launch
           npx electron-builder --win portable nsis --publish never
 
       - name: Upload Windows Portable Executable
@@ -63,4 +66,15 @@ jobs:
           name: canvastube-windows-setup-x64
           path: dist/CanvasTube Setup *.exe
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows Electron diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-windows-electron-tests
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
           retention-days: 14

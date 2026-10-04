@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
@@ -15,6 +15,7 @@ async function createTemporaryProjectDirectory(): Promise<string> {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   await Promise.all(temporaryDirectories.splice(0).map((directory) => fs.rm(directory, { recursive: true, force: true })))
 })
 
@@ -69,6 +70,7 @@ describe('ProjectService asset persistence', () => {
       createdAt: new Date().toISOString()
     }
 
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await ProjectService.saveProject(
       projectDirectory,
       { manifest, sceneData: { elements: [], appState: {} } },
@@ -77,5 +79,6 @@ describe('ProjectService asset persistence', () => {
 
     expect(result.success).toBe(false)
     expect(result.error).toContain('checksum')
+    expect(error).toHaveBeenCalledOnce()
   })
 })

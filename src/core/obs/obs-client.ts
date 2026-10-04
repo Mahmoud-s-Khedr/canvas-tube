@@ -44,6 +44,7 @@ export class ObsClient {
   >()
 
   private reconnectTimer: any = null
+  private cancelConnection?: () => void
   private isExplicitDisconnect = false
 
   public getStatus(): ObsConnectionStatus {
@@ -127,6 +128,15 @@ export class ObsClient {
           }
         }, 5000)
 
+        this.cancelConnection = () => {
+          clearTimeout(connectTimeout)
+          if (!isResolved) {
+            isResolved = true
+            reject(new Error('OBS connection cancelled'))
+          }
+          socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null
+        }
+
         socket.onopen = () => {
           // Handshake begins with Hello received from server
         }
@@ -159,6 +169,12 @@ export class ObsClient {
 
         socket.onclose = (event: any) => {
           clearTimeout(connectTimeout)
+          if (!isResolved) {
+            isResolved = true
+            reject(new Error('OBS connection closed before identification'))
+          }
+          this.cancelConnection?.()
+          this.cancelConnection = undefined
           this.ws = null
           this.cleanupPendingRequests('WebSocket connection closed')
 
@@ -180,6 +196,8 @@ export class ObsClient {
 
   public disconnect(): void {
     this.isExplicitDisconnect = true
+    this.cancelConnection?.()
+    this.cancelConnection = undefined
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null

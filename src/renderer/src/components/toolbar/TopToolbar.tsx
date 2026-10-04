@@ -348,6 +348,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
               padding: '5px 4px'
             }}
             title="Save Options"
+            aria-label="Save options"
           >
             <ChevronDown size={13} />
           </button>
@@ -499,6 +500,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
               color: isBookmarksOpen ? '#93c5fd' : '#a1a1aa',
               cursor: 'pointer'
             }}
+            aria-label="Bookmark current view"
             title={`Quick Bookmark Current View into Tour${shortcutLabel?.('presentation.bookmark') ? ` (${shortcutLabel('presentation.bookmark')})` : ''}`}
           >
             <Plus size={14} color="#60a5fa" />
