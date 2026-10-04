@@ -26,11 +26,17 @@ export async function launchDesktop(root: string) {
     window.on('pageerror', error => errors.push(error.message))
     window.on('crash', () => errors.push('Renderer crashed'))
   })
-  const page = await app.firstWindow()
-  page.on('pageerror', error => { if (!errors.includes(error.message)) errors.push(error.message) })
-  await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
-  await page.getByRole('button', { name: 'Save', exact: true }).waitFor()
-  return { app, page, errors, logs }
+  try {
+    const page = await app.firstWindow()
+    page.on('pageerror', error => { if (!errors.includes(error.message)) errors.push(error.message) })
+    await app.context().tracing.start({ screenshots: true, snapshots: true, sources: true })
+    await page.getByRole('button', { name: 'Save', exact: true }).waitFor()
+    return { app, page, errors, logs }
+  } catch (error) {
+    await writeFile(join(root, 'startup.log'), logs.join(''))
+    await app.close().catch(() => { app.process().kill() })
+    throw error
+  }
 }
 export type DesktopSession = Awaited<ReturnType<typeof launchDesktop>>
 

@@ -5,7 +5,15 @@ import { temporaryWorkspace, launchDesktop, dialogs, closeDesktop, removeWorkspa
 
 let root: string
 let session: DesktopSession | undefined
-test.beforeEach(async () => { root = await temporaryWorkspace(); session = await launchDesktop(root) })
+// eslint-disable-next-line no-empty-pattern
+ test.beforeEach(async ({}, info) => {
+  root = await temporaryWorkspace()
+  try { session = await launchDesktop(root) } catch (error) {
+    const log = await readFile(join(root, 'startup.log')).catch(() => Buffer.from(String(error)))
+    await info.attach('startup.log', { body: log, contentType: 'text/plain' })
+    throw error
+  }
+})
 // Playwright requires destructured fixture arguments for hooks.
 // eslint-disable-next-line no-empty-pattern
 test.afterEach(async ({}, info) => {
@@ -42,7 +50,7 @@ test('draw, save, restart and reopen persisted scene through the real bridge', a
 })
 
 test('imports original PNG/PDF assets and exports decoded PNG/SVG content', async () => {
-  const { app, page } = session!
+  let { app, page } = session!
   await dialogs(app, { open: resolve('e2e/fixtures/small.png') })
   await page.getByRole('button', { name: 'Import Image', exact: true }).click()
   await expect(page.getByText('Image inserted onto canvas', { exact: true })).toBeVisible()
@@ -58,6 +66,15 @@ test('imports original PNG/PDF assets and exports decoded PNG/SVG content', asyn
   for (const asset of Object.values(manifest.assets) as { originalFilename: string; relativePath: string }[]) {
     expect(await readFile(join(project, asset.relativePath))).toEqual(await readFile(resolve('e2e/fixtures', asset.originalFilename)))
   }
+  const savedScene = JSON.parse(await readFile(join(project, 'scene.json'), 'utf8'))
+  const errors = [...session!.errors]; await closeDesktop(session!); session = undefined; expect(errors).toEqual([])
+  session = await launchDesktop(root); ({ app, page } = session)
+  await dialogs(app, { open: project })
+  await page.getByRole('button', { name: 'Open', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Slide Dock', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.getByText('Project saved successfully!', { exact: true })).toBeVisible()
+  expect(JSON.parse(await readFile(join(project, 'scene.json'), 'utf8')).elements).toEqual(savedScene.elements)
   for (const format of ['PNG', 'SVG']) {
     await page.getByRole('button', { name: 'Export', exact: true }).click()
     const destination = join(root, `diagram.${format.toLowerCase()}`)
@@ -68,7 +85,22 @@ test('imports original PNG/PDF assets and exports decoded PNG/SVG content', asyn
     const bytes = await readFile(destination)
     if (format === 'PNG') {
       expect(bytes.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-      expect(bytes.readUInt32BE(16)).toBeGreaterThan(0); expect(bytes.readUInt32BE(20)).toBeGreaterThan(0)
-    } else { expect(bytes.toString()).toContain('<svg'); expect(bytes.toString()).toContain('<image') }
+      const dimensions = await page.evaluate(async base64 => {
+        const image = new Image(); image.src = `data:image/png;base64,${base64}`; await image.decode()
+        const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height
+        const context = canvas.getContext('2d')!; context.drawImage(image, 0, 0)
+        const pixels = context.getImageData(0, 0, image.width, image.height).data
+        const colors = new Set<number>()
+        for (let index = 0; index < pixels.length; index += 4) colors.add((pixels[index] << 16) | (pixels[index + 1] << 8) | pixels[index + 2])
+        return { width: image.width, height: image.height, colors: colors.size }
+      }, bytes.toString('base64'))
+      expect(dimensions.width).toBe(bytes.readUInt32BE(16)); expect(dimensions.height).toBe(bytes.readUInt32BE(20)); expect(dimensions.colors).toBeGreaterThan(1)
+    } else {
+      expect(bytes.toString()).toContain('<svg'); expect(bytes.toString()).toContain('<image')
+      expect(await page.evaluate(svg => {
+        const document = new DOMParser().parseFromString(svg, 'image/svg+xml')
+        return { errors: document.querySelectorAll('parsererror').length, embeddedImages: document.querySelectorAll('image').length }
+      }, bytes.toString())).toMatchObject({ errors: 0, embeddedImages: 1 })
+    }
   }
 })

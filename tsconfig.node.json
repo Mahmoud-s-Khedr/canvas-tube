@@ -29,6 +29,8 @@
     "tests/main-window.test.ts",
     "e2e/**/*.ts",
     "playwright.config.ts",
-    "tests/project-failures.test.ts"
+    "tests/project-failures.test.ts",
+    "vitest.config.ts",
+    "coverage-minimums.json"
   ]
 }

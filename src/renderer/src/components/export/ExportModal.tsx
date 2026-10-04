@@ -217,6 +217,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         if (saveRes.success && saveRes.filePath) {
           onToast(`Export saved successfully to: ${saveRes.filePath}`, 'success')
           onClose()
+        } else if (!saveRes.canceled) {
+          onToast(`Export failed: ${saveRes.error || 'Unknown error'}`, 'warning')
         }
       } else {
         // Browser fallback: trigger anchor download

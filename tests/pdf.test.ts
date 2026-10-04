@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   createDefaultManifest,
   validateProjectManifest,
@@ -7,7 +7,15 @@ import {
   DocumentEntry,
   AssetEntry
 } from '../src/core/project/project-manifest'
-import { PdfService } from '../src/renderer/src/services/pdf-service'
+const startupWarning = 'Warning: Please use the `legacy` build in Node.js environments.'
+const warnings: unknown[] = []
+const originalWarn = console.warn
+const warningCapture = vi.spyOn(console, 'warn').mockImplementation((...args) => {
+  if (args[0] === startupWarning) warnings.push(args[0])
+  else originalWarn(...args)
+})
+const { PdfService } = await import('../src/renderer/src/services/pdf-service')
+warningCapture.mockRestore()
 
 // Minimal 1-page valid PDF document
 const MINIMAL_PDF_BASE64 =
@@ -105,6 +113,10 @@ describe('PDF & Document Manifest Integration', () => {
 describe('PdfService Base64 Loading and In-Memory Worker', () => {
   beforeEach(() => {
     PdfService.clearCache()
+  })
+
+  it('captures the expected Node PDF.js startup warning locally', () => {
+    expect(warnings).toEqual([startupWarning])
   })
 
   it('installs the PDF.js Map compatibility helper', () => {

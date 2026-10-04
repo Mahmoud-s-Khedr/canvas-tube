@@ -116,6 +116,42 @@ describe('project workflows through real application UI', () => {
     expect(await screen.findByText('Desktop API is unavailable.')).toBeInTheDocument()
   })
 
+  it('preserves project state when image/PDF import dialogs are cancelled', async () => {
+    render(<App />); canvas.scene.elements.push({ id: 'keep' })
+    await click('Import image'); await click('Import PDF'); await click('Save')
+    expect(canvas.addObject).not.toHaveBeenCalled()
+    expect(desktop.saveProjectAs.mock.calls[0][1].manifest.assets).toEqual({})
+    expect(desktop.saveProjectAs.mock.calls[0][1].manifest.documents).toEqual([])
+    expect(canvas.scene.elements).toEqual([{ id: 'keep' }])
+  })
+
+  it('reports a later save failure and Save As failures without changing the existing directory', async () => {
+    render(<App />); await click('Save')
+    desktop.saveProject.mockResolvedValue({ success: false, error: 'read only' })
+    await click('Save'); expect(await screen.findByText('Save failed: read only')).toBeInTheDocument()
+    desktop.saveProjectAs.mockResolvedValue({ success: false, error: 'disk full' })
+    await click('Save options'); await click(/Save As/)
+    expect(await screen.findByText('Save As failed: disk full')).toBeInTheDocument()
+    desktop.saveProjectAs.mockRejectedValue(new Error('permission denied'))
+    await click('Save options'); await click(/Save As/)
+    expect(await screen.findByText('Save As failed: permission denied')).toBeInTheDocument()
+    await click('Save')
+    expect(desktop.saveProject).toHaveBeenLastCalledWith('/project', expect.anything(), {})
+  })
+
+  it('reports native copy failure and export cancellation/failure', async () => {
+    render(<App />); canvas.scene.elements.push({ id: 'diagram' })
+    desktop.copyImageToClipboard.mockResolvedValue(false)
+    await userEvent.keyboard('{Control>}{Shift>}C{/Shift}{/Control}')
+    expect(await screen.findByText('Failed to copy diagram to clipboard')).toBeInTheDocument()
+    desktop.saveExportFile.mockResolvedValue({ success: false, canceled: true })
+    await click('Export'); await click(/Save PNG Diagram/)
+    expect(screen.getByText('Production Diagram Export')).toBeInTheDocument()
+    desktop.saveExportFile.mockResolvedValue({ success: false, error: 'read only' })
+    await click(/Save PNG Diagram/)
+    expect(await screen.findByText(/read only/)).toBeInTheDocument()
+  })
+
   it('restores project scene and document, reports missing persisted PDF bytes', async () => {
     const manifest = createDefaultManifest('Reopened')
     manifest.documents.push({ id: 'doc', assetId: 'a', filename: 'slides.pdf', pageCount: 1, type: 'pdf' })
