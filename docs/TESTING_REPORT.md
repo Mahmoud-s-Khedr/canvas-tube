@@ -90,7 +90,9 @@ Both build workflows run typecheck, combined coverage and lint, then compiled-ap
 smoke tests before packaging and unpacked executable launch tests after packaging.
 Fedora runs in its existing Fedora 41 container as a non-root user under Xvfb/X11 with
 Electron libraries installed. Windows runs natively. Package artifact names remain
-unchanged. Coverage and desktop diagnostics upload with always-run steps for 14 days.
+unchanged. Windows build, smoke, debug packaging, unpacked launch and release
+packaging each use separate steps so each native command failure stops the job;
+see [GitHub shell exit-code behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#exit-codes-and-error-action-preference). Coverage and desktop diagnostics upload with always-run steps for 14 days.
 Generated results are ignored by Git. Installer automation and visual baselines remain
 outside this roadmap.
 

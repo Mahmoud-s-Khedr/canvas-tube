@@ -35,13 +35,20 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Compile and Package Windows Binaries
-        run: |
-          npm run build
-          npm run test:e2e
-          npx electron-builder --win --dir --publish never
-          npm run test:e2e:packaged -- --grep launch
-          npx electron-builder --win portable nsis --publish never
+      - name: Compile application
+        run: npm run build
+
+      - name: Run compiled Electron smoke tests
+        run: npm run test:e2e
+
+      - name: Package Windows debug executable
+        run: npx electron-builder --win --dir --publish never
+
+      - name: Launch packaged Windows executable
+        run: npm run test:e2e:packaged -- --grep launch
+
+      - name: Package Windows portable and NSIS binaries
+        run: npx electron-builder --win portable nsis --publish never
 
       - name: Upload Windows Portable Executable
         uses: actions/upload-artifact@v4
