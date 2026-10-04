@@ -51,8 +51,8 @@ jobs:
               echo '=== 4. Verifying TypeScript Types ==='
               npm run typecheck
 
-              echo '=== 5. Running Automated Unit Tests ==='
-              npm test
+              echo '=== 5. Running Automated Unit Tests with Coverage ==='
+              npm run test:coverage
 
               echo '=== 6. Running Linter Checks ==='
               npm run lint
@@ -81,6 +81,15 @@ jobs:
           name: canvastube-fedora-debug-x64
           path: dist/canvastube-fedora-debug-x64.tar.gz
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Fedora Coverage Report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-fedora-coverage
+          path: coverage/
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Upload Fedora AppImage

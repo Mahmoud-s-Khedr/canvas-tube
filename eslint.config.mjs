@@ -18,6 +18,13 @@ export default tseslint.config(
     }
   },
   {
-    ignores: ['out/**', 'dist/**', 'node_modules/**', 'src/renderer/public/**', 'References-project/**']
+    ignores: [
+      'out/**',
+      'dist/**',
+      'coverage/**',
+      'node_modules/**',
+      'src/renderer/public/**',
+      'References-project/**'
+    ]
   }
 )

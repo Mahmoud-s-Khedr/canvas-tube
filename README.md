@@ -160,6 +160,7 @@ CanvasTube follows Electron security best practices:
 
 ## 📚 Documentation
 
+- [Usage Guide](docs/USAGE_GUIDE.md)
 - [System Architecture](docs/ARCHITECTURE.md)
 - [Product Roadmap](docs/ROADMAP.md)
 - [Master Implementation Plan](docs/plan.md)

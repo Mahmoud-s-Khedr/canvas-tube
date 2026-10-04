@@ -29,8 +29,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Run Unit Tests
-        run: npm test
+      - name: Run Unit Tests with Coverage
+        run: npm run test:coverage
 
       - name: Lint
         run: npm run lint
@@ -46,6 +46,15 @@ jobs:
           name: canvastube-windows-portable-x64
           path: dist/CanvasTube *.exe
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows Coverage Report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvastube-windows-coverage
+          path: coverage/
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Upload Windows NSIS Setup Installer
