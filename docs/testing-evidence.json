@@ -1,0 +1,90 @@
+{
+  "measuredCommit": "f3641ade780f17681e7aef48dd9abc4ae0abc64f",
+  "date": "2026-10-04",
+  "minimums": {
+    "statements": 69,
+    "branches": 73,
+    "functions": 62,
+    "lines": 69
+  },
+  "platforms": {
+    "fedora": {
+      "runUrl": "https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232167470",
+      "conclusion": "success",
+      "vitestTests": 209,
+      "compiledSmokeTests": 3,
+      "unpackedLaunchTests": 1,
+      "coverageTotal": {
+        "lines": {
+          "total": 11693,
+          "covered": 8143,
+          "skipped": 0,
+          "pct": 69.63
+        },
+        "statements": {
+          "total": 11693,
+          "covered": 8143,
+          "skipped": 0,
+          "pct": 69.63
+        },
+        "functions": {
+          "total": 395,
+          "covered": 246,
+          "skipped": 0,
+          "pct": 62.27
+        },
+        "branches": {
+          "total": 1694,
+          "covered": 1245,
+          "skipped": 0,
+          "pct": 73.49
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "windows": {
+      "runUrl": "https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232169370",
+      "conclusion": "success",
+      "vitestTests": 209,
+      "compiledSmokeTests": 3,
+      "unpackedLaunchTests": 1,
+      "coverageTotal": {
+        "lines": {
+          "total": 11693,
+          "covered": 8138,
+          "skipped": 0,
+          "pct": 69.59
+        },
+        "statements": {
+          "total": 11693,
+          "covered": 8138,
+          "skipped": 0,
+          "pct": 69.59
+        },
+        "functions": {
+          "total": 395,
+          "covered": 245,
+          "skipped": 0,
+          "pct": 62.02
+        },
+        "branches": {
+          "total": 1693,
+          "covered": 1244,
+          "skipped": 0,
+          "pct": 73.47
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    }
+  }
+}

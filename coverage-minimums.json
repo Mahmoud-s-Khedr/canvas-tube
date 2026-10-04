@@ -1,7 +1,7 @@
 {
-  "status": "pending-platform-evidence",
-  "statements": null,
-  "branches": null,
-  "functions": null,
-  "lines": null
+  "status": "verified-platform-minimums",
+  "statements": 69,
+  "branches": 73,
+  "functions": 62,
+  "lines": 69
 }

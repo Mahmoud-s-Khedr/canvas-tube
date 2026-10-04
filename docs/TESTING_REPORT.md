@@ -4,6 +4,29 @@ Assessment date: 2026-10-04. The roadmap adds renderer, Electron boundary and de
 smoke coverage to the original 108-test Node foundation. This document distinguishes
 local verification, platform CI evidence, and manual hardware release evidence.
 
+## Local verification
+
+The current implementation passes 24 Vitest files and 209 tests, typecheck, lint,
+diff checks, application build, all three compiled Electron smoke tests, Linux
+unpacked executable launch, and the actual-renderer benchmark. A temporary 100%
+statement threshold exits with a coverage violation while ordinary tests pass.
+
+Local combined V8 coverage: statements **69.67%**, branches **73.54%**, functions
+**62.27%**, lines **69.67%**. These local measurements do not establish platform
+minimums; the same-revision Fedora/Windows CI results must determine those numbers.
+
+An actual local renderer benchmark on an AMD Ryzen 5 PRO 5650U, Linux x64, Electron
+34.5.8 records the following medians (one warmup, three measured runs):
+
+| Elements | UI load (ms) | Viewport PNG export (ms) | RAF interval (ms) |
+| --- | --- | --- | --- |
+| 1,000 | 521.45 | 497.79 | 16.70 |
+| 5,000 | 1,705.10 | 431.38 | 16.70 |
+| 10,000 | 1,915.75 | 610.73 | 16.70 |
+
+These are machine-specific advisory observations. Full metadata, individual runs,
+frame intervals and heap samples are in the generated benchmark reports.
+
 ## Commands and suite boundaries
 
 | Command | Purpose |
@@ -97,13 +120,23 @@ Windows manual QA is deferred; Windows automation remains required.
 
 ## Coverage minimums and remaining acceptance
 
-`coverage-minimums.json` records the gate status explicitly. Minimums must be the lower
-Fedora/Windows result for each of statements, branches, functions and lines, rounded
-down, after both platforms pass the same revision. While that evidence is pending,
-minimums are null and no guessed gate is activated. The root config uses numeric
-minimums once reviewed measurements are committed.
+`coverage-minimums.json` enforces statements **69%**, branches **73%**, functions
+**62%** and lines **69%** globally. These are the lower platform measurements,
+rounded down, from the same tested application revision
+`f3641ade780f17681e7aef48dd9abc4ae0abc64f`:
 
-Download each platform's `coverage/coverage-summary.json`, then run:
+| Platform | Statements | Branches | Functions | Lines | Complete workflow |
+| --- | --- | --- | --- | --- | --- |
+| Fedora | 69.63% | 73.49% | 62.27% | 69.63% | [Passed](https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232167470) |
+| Windows | 69.59% | 73.47% | 62.02% | 69.59% | [Passed](https://github.com/Mahmoud-s-Khedr/canvas-tube/actions/runs/37232169370) |
+
+Both workflows passed 209 Vitest tests, three compiled smoke tests, unpacked launch,
+application packaging, typecheck and lint. [Recorded evidence](testing-evidence.json)
+retains metric counts and run provenance. Gate activation changes test configuration
+and documentation, with the application and tests preserved at that measured revision.
+The same workflows are rerun after activation to verify enforcement on both platforms.
+
+For future verified improvements, download each platform's `coverage/coverage-summary.json`, then run:
 
 ```bash
 node scripts/propose-coverage-minimums.mjs fedora-summary.json windows-summary.json
@@ -118,6 +151,6 @@ threshold can be checked without editing version-controlled minimums:
 npm run test:coverage -- --coverage.thresholds.statements=100
 ```
 
-This command must exit nonzero while the ordinary suite passes. Platform CI runs and
-hardware records are external acceptance checks; local success alone does not satisfy
-the roadmap's two-platform coverage or Fedora hardware requirements.
+This command must exit nonzero while the ordinary suite passes. Both platform workflows have passed. Fedora hardware release evidence remains
+incomplete and must be recorded separately; automated success does not satisfy
+the GNOME/KDE Wayland hardware requirements.
